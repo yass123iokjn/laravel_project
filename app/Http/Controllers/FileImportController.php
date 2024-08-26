@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
@@ -16,77 +15,84 @@ use Illuminate\Support\Facades\DB;
 class FileImportController extends Controller
 {
     public function create($formulaId)
-{
-    $formula = Formula::findOrFail($formulaId);
-    $calculations = Calcul::where('formula_id', $formulaId)->get(); // Récupérer les calculs pour cette formule
-    return view('formulas.import', compact('formula', 'calculations'));
-}
+    {
+        $formula = Formula::findOrFail($formulaId);
+        $calculations = Calcul::where('formula_id', $formulaId)->get(); // Récupérer les calculs pour cette formule
+        return view('formulas.import', compact('formula', 'calculations'));
+    }
 
+    public function store(Request $request, $formulaId)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx',
+            'reference' => 'required|string',
+        ]);
 
-public function store(Request $request, $formulaId)
-{
-    $request->validate([
-        'file' => 'required|mimes:xlsx',
-        'reference' => 'required|string'
-    ]);
+        $file = $request->file('file');
+        $reference = $request->input('reference');
 
-    $file = $request->file('file');
-    $reference = $request->input('reference');
+        try {
+            DB::beginTransaction();
 
-    try {
-        DB::beginTransaction();
+            $filePath = $file->store('excel_files');
 
-        $filePath = $file->store('excel_files');
+            
+            $import = new ExcelImport($reference, $formulaId);
+            Excel::import($import, $file);
 
-        $import = new ExcelImport($reference, $formulaId);
-        Excel::import($import, $file);
+            if (!empty($import->getErrors())) {
+                DB::rollBack();
+                return redirect()->route('formulas.importFile', $formulaId)
+                    ->withErrors(['error' => implode('. ', $import->getErrors())]);
+            }
 
-        if (!empty($import->getErrors())) {
+            
+            Result::where('formula_id', $formulaId)->delete();
+
+            $excelFile = ExcelFile::create([
+                'user_id' => Auth::id(),
+                'file_path' => $filePath,
+                'uploaded_at' => Carbon::now(),
+            ]);
+
+            $import->saveResults($excelFile->id);
+
+            // Create a new calculation entry and get the ID
+            $calcul = Calcul::create([
+                'nom_calcul' => 'formule',
+                'reference' => $reference,
+                'excel_file_id' => $excelFile->id,
+                'formula_id' => $formulaId,
+                'result_id' => null, // Set to null initially
+            ]);
+
+            // Update the result with the newly created calculation ID
+            $result = Result::where('formula_id', $formulaId)->latest()->first();
+            if ($result) {
+                $result->update(['calcul_id' => $calcul->id]);
+            }
+
+            // Update the calculation entry with the result ID
+            $calcul->update(['result_id' => $result ? $result->id : null]);
+
+            // Add calculation to the session
+            $calculations = Calcul::where('formula_id', $formulaId)->get(); // Retrieve calculations for this formula
+            session(['calculations' => $calculations]);
+
+            DB::commit();
+
+            return redirect()->route('formulas.importFile', $formulaId)
+                ->with('success', 'File imported and calculations performed successfully.');
+        } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->route('formulas.importFile', $formulaId)
-                ->withErrors(['error' => implode('. ', $import->getErrors())]);
+                ->withErrors(['error' => 'Error importing or calculating: ' . $e->getMessage()]);
         }
-
-        // Supprimer les anciens résultats pour la formule
-        Result::where('formula_id', $formulaId)->delete();
-
-        $excelFile = ExcelFile::create([
-            'user_id' => Auth::id(),
-            'file_path' => $filePath,
-            'uploaded_at' => Carbon::now(),
-        ]);
-
-        $import->saveResults($excelFile->id);
-
-        $calcul = Calcul::create([
-            'nom_calcul' => 'formule',
-            'reference' => $reference,
-            'excel_file_id' => $excelFile->id,
-            'formula_id' => $formulaId,
-            'result_id' => Result::where('formula_id', $formulaId)->latest()->first()->id,
-        ]);
-
-        // Ajouter le calcul à la session
-        $calculations = Calcul::where('formula_id', $formulaId)->get(); // Récupérer les calculs pour cette formule
-        session(['calculations' => $calculations]);
-
-        DB::commit();
-
-        return redirect()->route('formulas.importFile', $formulaId)
-            ->with('success', 'Fichier importé et calculs effectués avec succès.');
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return redirect()->route('formulas.importFile', $formulaId)
-            ->withErrors(['error' => 'Erreur lors de l\'importation ou du calcul : ' . $e->getMessage()]);
     }
-}
-
 
     public function results()
     {
         $calculations = Calcul::with('formula', 'result')->get();
         return view('formulas.results', compact('calculations'));
     }
-
-    
 }

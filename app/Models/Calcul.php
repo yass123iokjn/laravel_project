@@ -22,7 +22,8 @@ class Calcul extends Model
     }
 
     public function results()
-    {
-        return $this->hasMany(Result::class, 'calcul_id');
-    }
+{
+    return $this->hasMany(Result::class, 'calcul_id');
+}
+
 }

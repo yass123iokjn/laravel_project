@@ -1,7 +1,5 @@
 <?php
 
-// app/Models/Formula.php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,16 +11,19 @@ class Formula extends Model
 
     protected $fillable = ['name', 'expression', 'user_id'];
 
+    // Relation avec le modèle User
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
+    // Relation avec le modèle Result
     public function results()
     {
-        return $this->hasMany(Result::class);
+        return $this->hasMany(Result::class, 'formula_id');
     }
 
+    // Relation avec le modèle Calcul
     public function calculs()
     {
         return $this->hasMany(Calcul::class);

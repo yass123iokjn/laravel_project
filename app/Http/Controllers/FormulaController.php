@@ -19,19 +19,20 @@ class FormulaController extends Controller
     use AuthorizesRequests;
 
     public function index(Request $request)
-    {
-        $search = $request->input('search');
+{
+    $search = $request->input('search');
 
-        if ($search) {
-            $formulas = Formula::where('name', 'like', "%{$search}%")
-                ->orWhere('expression', 'like', "%{$search}%")
-                ->get();
-        } else {
-            $formulas = Formula::all();
-        }
-
-        return view('formulas.index', compact('formulas'));
+    if ($search) {
+        $formulas = Formula::where('name', 'like', "%{$search}%")
+            ->orWhere('expression', 'like', "%{$search}%")
+            ->get();
+    } else {
+        $formulas = Formula::all();
     }
+
+    // Vérifiez que vous passez bien la variable $formulas à la vue
+    return view('formulas.index', compact('formulas'));
+}
 
     public function create()
     {
@@ -180,18 +181,29 @@ class FormulaController extends Controller
         return view('formulas.confirm_delete', compact('formula'));
     }
 
-    //public function showResults($id)
-//{
-   // $cal = Calcul::where('id',$id)->where('reference',$ref)->get();
-    //$formula = Formula::find($cal->formula_id);
-    //$results = Result::with('formula')->where('calcul_id', $id)->get();
+    public function showResults($id)
+{
+    // Récupérer le calcul avec l'ID spécifié et charger ses résultats
+    $calculation = Calcul::with('results')->findOrFail($id);
+
+    // Initialiser un tableau vide pour les données de résultats
+    $resultsData = [];
+
+    // Parcourir les résultats associés au calcul
+    foreach ($calculation->results as $result) {
+        $resultData = $result->result_data; // Ce champ est un JSON, donc on le décode
+        if (is_array($resultData)) {
+            foreach ($resultData as $item) {
+                // Supposons que result_data contient des chaînes de caractères sous forme "op1 + op2 = result"
+                $resultsData[] = $item;
+            }
+        }
+    }
+
+    // Retourner la vue avec les données de résultats et l'ID de calcul
+    return view('formulas.results', compact('resultsData', 'id'));
+}
+
+
     
-    // Convertir les résultats JSON en tableau PHP pour l'affichage
-    //$results = $results->map(function ($result) {
-        //$data = json_decode($result->result_data, true);
-        //return array_merge(['result_data' => $data], ['id' => $result->id]);
-    //});
-    
-    //return view('formulas.results', compact('cal','formula', 'results'));
-//}
 }

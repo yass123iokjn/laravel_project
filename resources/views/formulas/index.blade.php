@@ -40,32 +40,33 @@
                 </div>
 
                 <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    @foreach($formulas as $formula)
-                    <div class="relative flex flex-col bg-gray-100 text-gray-800 shadow-lg rounded-xl transform transition duration-500 hover:scale-105 hover:shadow-xl">
-                        <div class="relative mx-4 mt-4 overflow-hidden rounded-full h-48 w-48 mx-auto transition duration-500 hover:scale-110">
-                            <img src="{{ asset('images/default-formula.png') }}" alt="card-image" class="object-cover w-full h-full rounded-full" />
-                        </div>
-                        <div class="p-6">
-                            <div class="flex items-center justify-between mb-2">
-                                <h1 class="block font-sans text-base font-medium leading-relaxed text-blue-gray-800">
-                                    {{ $formula->name }}
-                                </h1>
-                            </div>
-                            <p class="block font-sans text-sm leading-normal text-gray-600 opacity-75">
-                                {{ $formula->expression }}
-                            </p>
-                        </div>
-                        <div class="p-6 pt-0 flex justify-between space-x-8">
-                            <a href="{{ route('formulas.edit', $formula) }}" class="btn-edit">✏️ Modifier</a>
-                            <a href="{{ route('formulas.importFile', $formula->id) }}" class="btn-calculate">📐 Calculer</a>
-                            <form action="{{ route('formulas.destroy', $formula) }}" method="POST" class="inline">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn-delete">🗑️ Supprimer</button>
-                            </form>
-                        </div>
-                    </div>
-                    @endforeach
+                @foreach($formulas as $formula)
+    <div class="relative flex flex-col bg-gray-100 text-gray-800 shadow-lg rounded-xl transform transition duration-500 hover:scale-105 hover:shadow-xl">
+        <div class="relative mx-4 mt-4 overflow-hidden rounded-full h-48 w-48 mx-auto transition duration-500 hover:scale-110">
+            <img src="{{ asset('images/default-formula.png') }}" alt="card-image" class="object-cover w-full h-full rounded-full" />
+        </div>
+        <div class="p-6">
+            <div class="flex items-center justify-between mb-2">
+                <h1 class="block font-sans text-base font-medium leading-relaxed text-blue-gray-800">
+                    {{ $formula->name }}
+                </h1>
+            </div>
+            <p class="block font-sans text-sm leading-normal text-gray-600 opacity-75">
+                {{ $formula->expression }}
+            </p>
+        </div>
+        <div class="p-6 pt-0 flex justify-between space-x-8">
+            <a href="{{ route('formulas.edit', $formula) }}" class="btn-edit">✏️ Modifier</a>
+            <a href="{{ route('formulas.importFile', $formula->id) }}" class="btn-calculate">📐 Calculer</a>
+            <form action="{{ route('formulas.destroy', $formula) }}" method="POST" class="inline">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn-delete">🗑️ Supprimer</button>
+            </form>
+        </div>
+    </div>
+@endforeach
+
                 </div>
             </div>
         </div>

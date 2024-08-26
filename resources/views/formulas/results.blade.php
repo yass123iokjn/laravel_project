@@ -1,10 +1,9 @@
-<!-- resources/views/formulas/results.blade.php -->
 <x-app-layout>
     <div class="bg-custom">
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <h2 class="font-extrabold text-5xl text-gray-800 leading-tight text-center mb-8">
-                    Résultats pour la Formule : {{ $formula->name }}
+                    Résultats pour le Calcul : {{ $id }}
                 </h2>
 
                 <!-- Afficher les messages de succès -->
@@ -23,36 +22,34 @@
                     </div>
                 @endif
 
-                <div class="bg-white p-6 rounded shadow-md">
-                    <h3 class="text-xl font-bold mb-4">Résultats Calculés</h3>
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead>
-                            <tr>
-                                @foreach($results->first() ? array_keys($results->first()['result_data']) : [] as $header)
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        {{ ucfirst($header) }}
-                                    </th>
-                                @endforeach
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Résultat
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            @foreach($results as $result)
+                <!-- Tableau des résultats -->
+                <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg p-6">
+                    @if(!empty($resultsData))
+                        <table class="table-auto w-full">
+                            <thead>
                                 <tr>
-                                    @foreach($result['result_data'] as $data)
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                            {{ $data }}
-                                        </td>
-                                    @endforeach
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        {{ $result['result_data']['result'] ?? 'N/A' }}
-                                    </td>
+                                    <th class="px-4 py-2">Opérande 1</th>
+                                    <th class="px-4 py-2">Opérande 2</th>
+                                    <th class="px-4 py-2">Résultat</th>
                                 </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                @foreach($resultsData as $result)
+                                    @php
+                                        // Diviser l'expression et le résultat
+                                        $parts = preg_split('/\s*[\+=]\s*/', $result);
+                                    @endphp
+                                    <tr>
+                                        <td class="border px-4 py-2">{{ $parts[0] ?? 'N/A' }}</td>
+                                        <td class="border px-4 py-2">{{ $parts[1] ?? 'N/A' }}</td>
+                                        <td class="border px-4 py-2">{{ $parts[2] ?? 'N/A' }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    @else
+                        <p>Aucun résultat trouvé pour ce calcul.</p>
+                    @endif
                 </div>
             </div>
         </div>

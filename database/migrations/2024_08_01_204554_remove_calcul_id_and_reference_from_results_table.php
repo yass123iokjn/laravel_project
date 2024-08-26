@@ -22,11 +22,11 @@ class RemoveCalculIdAndReferenceFromResultsTable extends Migration
     public function down()
     {
         Schema::table('results', function (Blueprint $table) {
-            // Recréez les colonnes supprimées
+ 
             $table->unsignedBigInteger('calcul_id')->after('excel_file_id');
             $table->string('reference')->after('calcul_id');
             
-            // Ajoutez à nouveau la clé étrangère
+      
             $table->foreign('calcul_id')->references('id')->on('calculus')->onDelete('cascade');
         });
     }

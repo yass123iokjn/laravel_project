@@ -45,6 +45,7 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        return redirect(route('dashboard', absolute: false));
+        // Redirige vers l'index des formules
+        return redirect(route('formulas.index'));
     }
 }

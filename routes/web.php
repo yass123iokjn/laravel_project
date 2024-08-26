@@ -12,19 +12,18 @@ Route::get('/', function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/formulars_index', function () {
-        return view('formulas.index');
-    })->name('dashboard');
+    Route::get('/formulas', [FormulaController::class, 'index'])->name('formulas.index');
+    // Routes pour les formules
+    Route::resource('formulas', FormulaController::class);
+    Route::get('/formulas/{formula}/confirm_delete', [FormulaController::class, 'confirmDelete'])->name('formulas.confirmDelete');
+
 
     // Routes pour le profil utilisateur
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // Routes pour les formules
-    Route::resource('formulas', FormulaController::class);
-    Route::get('/formulas/{formula}/confirm_delete', [FormulaController::class, 'confirmDelete'])->name('formulas.confirmDelete');
-});
+    });
 
 // Routes pour l'importation des fichiers
 Route::get('/formulas/{formula}/import', [FileImportController::class, 'create'])->name('formulas.importFile');
