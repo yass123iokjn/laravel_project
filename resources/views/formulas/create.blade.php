@@ -17,7 +17,7 @@
                         </div>
 
                         <div class="mb-4">
-                            <button type="button" id="analyze-btn" class="w-full flex items-center justify-center px-4 py-2 bg-green-500 border border-transparent rounded-md font-semibold text-xs uppercase tracking-widest hover:bg-green-700 focus:outline-none focus:border-green-700 focus:ring focus:ring-green-200 active:bg-green-600 disabled:opacity-25 transition">
+                            <button id="analyze-btn" type="button" class="w-full flex items-center justify-center px-4 py-2 bg-green-500 border border-transparent rounded-md font-semibold text-xs uppercase tracking-widest hover:bg-green-700 focus:outline-none focus:border-green-700 focus:ring focus:ring-green-200 active:bg-green-600 disabled:opacity-25 transition">
                                 {{ __('Analyser et Traduire') }}
                             </button>
                         </div>
@@ -42,61 +42,62 @@
             </div>
         </div>
     </div>
-</x-app-layout>
 
-<style>
-    .py-12 {
-        background-image: url('{{ asset('images/board-5599231_1280.png') }}');
-        background-size: cover;
-        background-position: center;
-        height: 100vh; 
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
+    <style>
+        .py-12 {
+            background-image: url('{{ asset('images/board-5599231_1280.png') }}');
+            background-size: cover;
+            background-position: center;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
 
-    .max-w-4xl {
-        max-width: 32rem; 
-        width: 100%;
-    }
+        .max-w-4xl {
+            max-width: 32rem;
+            width: 100%;
+        }
 
-    .px-4 {
-        padding-left: 1rem; 
-        padding-right: 1rem; 
-    }
-</style>
+        .px-4 {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+    </style>
 
-<script>
-    document.getElementById('analyze-btn').addEventListener('click', function() {
-        const sentence = document.getElementById('sentence').value;
+    <script>
+        document.getElementById('analyze-btn').addEventListener('click', function() {
+    const sentence = document.getElementById('sentence').value;
 
-        fetch('{{ route('formulas.analyze') }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-            },
-            body: JSON.stringify({ sentence: sentence })
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                document.getElementById('expression').value = data.expression;
-            } else {
-                alert('Erreur d\'analyse: ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Erreur:', error);
-            alert('Une erreur est survenue. Veuillez réessayer.');
-        });
+    // Envoyer la phrase à l'API via une requête POST
+    fetch("{{ route('formulas.analyze') }}", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": "{{ csrf_token() }}"
+        },
+        body: JSON.stringify({ sentence: sentence })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Erreur du serveur: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.error) {
+            console.error('Erreur:', data.error);
+            alert(`Erreur: ${data.error}`);
+        } else {
+            // Mettre à jour le champ "Expression de la Formule" avec la formule générée
+            document.getElementById('expression').value = data.formula;
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert(`Erreur: ${error.message}`);
     });
-</script>
+});
 
-
-
+    </script>
+</x-app-layout>

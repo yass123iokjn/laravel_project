@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Imports;
 
 use Maatwebsite\Excel\Concerns\ToModel;
@@ -16,17 +15,21 @@ class ExcelImport implements ToModel, WithHeadingRow
     protected $errors = [];
     protected $results = [];
     protected $evaluatedExpressions = [];
-    
+    protected $headers = []; // Nouvelle propriété pour stocker les en-têtes
 
     public function __construct($reference, $formulaId)
     {
         $this->reference = $reference;
         $this->formulaId = $formulaId;
-        
     }
 
     public function model(array $row)
     {
+        // Assurez-vous que les en-têtes sont capturés avant le traitement des lignes
+        if (empty($this->headers)) {
+            $this->headers = array_keys($row);
+        }
+
         $formula = Formula::find($this->formulaId);
         if (!$formula) {
             $this->addError('Formule non trouvée.');
@@ -50,6 +53,11 @@ class ExcelImport implements ToModel, WithHeadingRow
         ]);
 
         return null;
+    }
+
+    public function getHeaders()
+    {
+        return $this->headers;
     }
 
     protected function applyFormula($expression, $row)
@@ -84,35 +92,32 @@ class ExcelImport implements ToModel, WithHeadingRow
     }
 
     public function saveResults($excelFileId)
-{
-    Log::info('Résultats à sauvegarder :', ['results' => $this->results]);
+    {
+        Log::info('Résultats à sauvegarder :', ['results' => $this->results]);
 
-    $resultsGroupedByFormula = [];
+        $resultsGroupedByFormula = [];
 
-    foreach ($this->results as $result) {
-        $formulaId = $this->formulaId;
+        foreach ($this->results as $result) {
+            $formulaId = $this->formulaId;
 
-        if (!isset($resultsGroupedByFormula[$formulaId])) {
-            $resultsGroupedByFormula[$formulaId] = [];
+            if (!isset($resultsGroupedByFormula[$formulaId])) {
+                $resultsGroupedByFormula[$formulaId] = [];
+            }
+
+            $resultsGroupedByFormula[$formulaId][] = $result['result_data'];
         }
 
-        $resultsGroupedByFormula[$formulaId][] = $result['result_data'];
+        foreach ($resultsGroupedByFormula as $formulaId => $results) {
+            Log::info('Sauvegarde des résultats pour la formule ID : ' . $formulaId, ['results' => $results]);
+
+            Result::create([
+                'excel_file_id' => $excelFileId,
+                'result_data' => json_encode($results),
+                'calculated_at' => Carbon::now(),
+                'formula_id' => $this->formulaId,
+            ]);
+        }
     }
-
-    foreach ($resultsGroupedByFormula as $formulaId => $results) {
-        Log::info('Sauvegarde des résultats pour la formule ID : ' . $formulaId, ['results' => $results]);
-
-        Result::create([
-            
-            'excel_file_id' => $excelFileId,
-            'result_data' => json_encode($results),
-            'calculated_at' => Carbon::now(),
-            'formula_id' => $this->formulaId,
-        ]);
-        
-    }
-}
-
 
     public function getErrors()
     {

@@ -29,8 +29,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::get('/formulas/{formula}/import', [FileImportController::class, 'create'])->name('formulas.importFile');
 Route::post('/formulas/{formula}/import', [FileImportController::class, 'store'])->name('formulas.import');
 
-Route::post('/analyze', [FormulaController::class, 'analyze'])->name('formulas.analyze');
+Route::post('/formulas/analyze', [FormulaController::class, 'analyzeAndTranslate'])->name('formulas.analyze');
 
 Route::get('formulas/{id}/results', [FormulaController::class, 'showResults'])->name('formulas.results');
+
+Route::get('formulas/{id}/graph', [FormulaController::class, 'showGraph'])->name('formulas.graph');
+
 
 require __DIR__.'/auth.php';

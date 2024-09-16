@@ -13,6 +13,9 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Maatwebsite\Excel\Facades\Excel; // Assurez-vous d'importer la façade Excel
 use App\Imports\ExcelImport; // Importez la classe ExcelImport
 use App\Models\Calcul;
+use Illuminate\Support\Facades\Log;
+use OpenAI\Laravel\Facades\OpenAI;
+use Exception;
 
 class FormulaController extends Controller
 {
@@ -94,84 +97,99 @@ class FormulaController extends Controller
     }
 
     public function import(Request $request, $id)
-    {
-        $request->validate([
-            'file' => 'required|mimes:xls,xlsx',
-            'reference' => 'required|string',
-        ]);
+{
+    $request->validate([
+        'file' => 'required|mimes:xls,xlsx',
+        'reference' => 'required|string',
+    ]);
 
-        $formula = Formula::find($id);
-        if (!$formula) {
-            return redirect()->back()->withErrors(['error' => 'Formule non trouvée.']);
-        }
-
-        try {
-            DB::beginTransaction();
-
-            $file = $request->file('file');
-            $filePath = $file->store('excel_files');
-
-            // Importer le fichier Excel sans créer l'enregistrement tout de suite
-            $import = new ExcelImport($request->input('reference'), $id);
-            Excel::import($import, $file);
-
-            // Vérifier les erreurs d'importation
-            if (!empty($import->getErrors())) {
-                DB::rollBack();
-                return redirect()->back()->withErrors(['error' => implode('; ', $import->getErrors())]);
-            }
-
-            // Créer l'enregistrement du fichier Excel seulement si l'importation a réussi
-            $excelFile = ExcelFile::create([
-                'path' => $filePath,
-                'name' => $file->getClientOriginalName(),
-            ]);
-
-            // Enregistrez les résultats avec l'ID du fichier Excel
-            $import->saveResults($excelFile->id);
-
-            DB::commit();
-
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return redirect()->back()->withErrors(['error' => 'Erreur lors de l\'importation du fichier Excel.']);
-        }
-
-        return redirect()->back()->with('success', 'Fichier importé et calculé avec succès.');
+    $formula = Formula::find($id);
+    if (!$formula) {
+        return redirect()->back()->withErrors(['error' => 'Formule non trouvée.']);
     }
 
-    
-    public function analyze(Request $request)
-    {
-        $request->validate([
-            'sentence' => 'required|string',
+    try {
+        DB::beginTransaction();
+
+        $file = $request->file('file');
+        $filePath = $file->store('excel_files');
+
+        // Importer le fichier Excel
+        $import = new ExcelImport($request->input('reference'), $id);
+        Excel::import($import, $file);
+
+        // Obtenez les en-têtes
+        $headers = $import->getHeaders();
+        Log::info('En-têtes du fichier Excel : ', ['headers' => $headers]);
+
+        // Vérifiez les erreurs d'importation
+        if (!empty($import->getErrors())) {
+            DB::rollBack();
+            return redirect()->back()->withErrors(['error' => implode('; ', $import->getErrors())]);
+        }
+
+        // Créez l'enregistrement du fichier Excel seulement si l'importation a réussi
+        $excelFile = ExcelFile::create([
+            'path' => $filePath,
+            'name' => $file->getClientOriginalName(),
         ]);
 
-        $sentence = $request->input('sentence');
+        // Enregistrez les résultats avec l'ID du fichier Excel
+        $import->saveResults($excelFile->id);
 
+        DB::commit();
+
+    } catch (\Throwable $e) {
+        DB::rollBack();
+        return redirect()->back()->withErrors(['error' => 'Erreur lors de l\'importation du fichier Excel.']);
+    }
+
+    return redirect()->back()->with('success', 'Fichier importé et calculé avec succès.');
+}
+
+    public function analyzeAndTranslate(Request $request)
+    {
         try {
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . env('OPENAI_API_KEY'),
-                'Content-Type' => 'application/json',
-            ])->post('https://api.openai.com/v1/completions', [
-                'model' => 'text-davinci-003',
-                'prompt' => "Translate this sentence into a formula: " . $sentence,
-                'max_tokens' => 60,
-            ]);
+            // Log de début de la méthode
+            Log::info('Début de la méthode analyzeAndTranslate');
 
-            $data = $response->json();
+            $sentence = $request->input('sentence');
 
-            if (isset($data['choices'][0]['text'])) {
-                return response()->json([
-                    'success' => true,
-                    'expression' => trim($data['choices'][0]['text']),
-                ]);
-            } else {
-                return response()->json(['success' => false, 'message' => 'No valid response from API'], 500);
+            // Log de la phrase reçue
+            Log::info('Phrase reçue : ' . $sentence);
+
+            // Valider que la phrase est bien envoyée
+            if (!$sentence) {
+                Log::error('La phrase est manquante');
+                return response()->json(['error' => 'La phrase est manquante.'], 400);
             }
 
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'API request failed: ' . $e->getMessage()], 500);
+            // Appelez l'API OpenAI pour analyser et traduire la phrase
+            $response = OpenAI::completions()->create([
+                'model' => 'text-davinci-003',
+                'prompt' => "Analyser la phrase suivante et traduisez-la en une formule mathématique: {$sentence}",
+                'max_tokens' => 100,
+                'temperature' => 0.5,
+            ]);
+
+            // Log de la réponse de l'API OpenAI
+            Log::info('Réponse OpenAI : ' . json_encode($response));
+
+            // Extraire la formule de la réponse OpenAI
+            if (isset($response['choices'][0]['text'])) {
+                $formula = $response['choices'][0]['text'];
+                Log::info('Formule générée : ' . $formula);
+                return response()->json(['formula' => trim($formula)]);
+            } else {
+                Log::error('Aucune formule générée par OpenAI');
+                return response()->json(['error' => 'Aucune formule générée.'], 500);
+            }
+        } catch (Exception $e) {
+            // Enregistrer l'erreur dans les logs
+            Log::error('Erreur dans analyzeAndTranslate : ' . $e->getMessage());
+
+            // Retourner une réponse JSON avec l'erreur
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
@@ -192,10 +210,30 @@ class FormulaController extends Controller
     // Parcourir les résultats associés au calcul
     foreach ($calculation->results as $result) {
         $resultData = $result->result_data; // Ce champ est un JSON, donc on le décode
+
+        // Vérifier si $resultData est une chaîne JSON ou déjà un tableau
+        if (is_string($resultData)) {
+            $resultData = json_decode($resultData, true); // Décoder le JSON en tableau
+        }
+
         if (is_array($resultData)) {
             foreach ($resultData as $item) {
-                // Supposons que result_data contient des chaînes de caractères sous forme "op1 + op2 = result"
-                $resultsData[] = $item;
+                // Supposons que $item est une chaîne de caractères au format "op1 op2 ... = result"
+                // Diviser la chaîne en utilisant le signe "=" pour séparer les opérandes du résultat
+                $parts = explode('=', $item);
+                if (count($parts) === 2) {
+                    $operands = trim($parts[0]);
+                    $result = trim($parts[1]);
+
+                    // Supprimer les signes d'opération et conserver uniquement les nombres
+                    $operandParts = preg_split('/\D+/', $operands, -1, PREG_SPLIT_NO_EMPTY);
+
+                    // Ajouter au tableau des résultats
+                    $resultsData[] = [
+                        'operands' => $operandParts,
+                        'result' => $result,
+                    ];
+                }
             }
         }
     }
@@ -203,6 +241,28 @@ class FormulaController extends Controller
     // Retourner la vue avec les données de résultats et l'ID de calcul
     return view('formulas.results', compact('resultsData', 'id'));
 }
+
+
+
+
+
+
+
+public function showGraph($id)
+{
+    $calcul = Calcul::with('result')->findOrFail($id);
+    
+    // Vérifiez si result_data est déjà un tableau
+    if (is_string($calcul->result->result_data)) {
+        $resultsData = json_decode($calcul->result->result_data, true);
+    } else {
+        $resultsData = $calcul->result->result_data; // Si c'est déjà un tableau
+    }
+ 
+    return view('formulas.graph', compact('resultsData', 'calcul'));
+}
+
+
 
 
     

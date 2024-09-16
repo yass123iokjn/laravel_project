@@ -1,5 +1,6 @@
 <?php
 
+// app/Models/Calcul.php
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -21,9 +22,9 @@ class Calcul extends Model
         return $this->belongsTo(Formula::class);
     }
 
+    // Relation avec plusieurs résultats
     public function results()
-{
-    return $this->hasMany(Result::class, 'calcul_id');
-}
-
+    {
+        return $this->hasMany(Result::class, 'calcul_id');
+    }
 }
