@@ -20,10 +20,10 @@
         const resultGraph = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: [@foreach($resultsData as $result) "{{ explode('=', $result)[0] }}", @endforeach],
+                labels: [@foreach($resultsData as $result) "{{ $result['operands'] }}", @endforeach],
                 datasets: [{
                     label: 'Résultats',
-                    data: [@foreach($resultsData as $result) {{ explode('=', $result)[1] }}, @endforeach],
+                    data: [@foreach($resultsData as $result) {{ $result['result'] }}, @endforeach],
                     backgroundColor: 'rgba(54, 162, 235, 0.2)',
                     borderColor: 'rgba(54, 162, 235, 1)',
                     borderWidth: 1

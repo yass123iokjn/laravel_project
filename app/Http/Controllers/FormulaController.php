@@ -97,55 +97,52 @@ class FormulaController extends Controller
     }
 
     public function import(Request $request, $id)
-{
-    $request->validate([
-        'file' => 'required|mimes:xls,xlsx',
-        'reference' => 'required|string',
-    ]);
-
-    $formula = Formula::find($id);
-    if (!$formula) {
-        return redirect()->back()->withErrors(['error' => 'Formule non trouvée.']);
-    }
-
-    try {
-        DB::beginTransaction();
-
-        $file = $request->file('file');
-        $filePath = $file->store('excel_files');
-
-        // Importer le fichier Excel
-        $import = new ExcelImport($request->input('reference'), $id);
-        Excel::import($import, $file);
-
-        // Obtenez les en-têtes
-        $headers = $import->getHeaders();
-        Log::info('En-têtes du fichier Excel : ', ['headers' => $headers]);
-
-        // Vérifiez les erreurs d'importation
-        if (!empty($import->getErrors())) {
-            DB::rollBack();
-            return redirect()->back()->withErrors(['error' => implode('; ', $import->getErrors())]);
-        }
-
-        // Créez l'enregistrement du fichier Excel seulement si l'importation a réussi
-        $excelFile = ExcelFile::create([
-            'path' => $filePath,
-            'name' => $file->getClientOriginalName(),
+    {
+        $request->validate([
+            'file' => 'required|mimes:xls,xlsx',
+            'reference' => 'required|string',
         ]);
 
-        // Enregistrez les résultats avec l'ID du fichier Excel
-        $import->saveResults($excelFile->id);
+        $formula = Formula::find($id);
+        if (!$formula) {
+            return redirect()->back()->withErrors(['error' => 'Formule non trouvée.']);
+        }
 
-        DB::commit();
+        try {
+            DB::beginTransaction();
 
-    } catch (\Throwable $e) {
-        DB::rollBack();
-        return redirect()->back()->withErrors(['error' => 'Erreur lors de l\'importation du fichier Excel.']);
+            $file = $request->file('file');
+            $filePath = $file->store('excel_files');
+
+            // Importer le fichier Excel sans créer l'enregistrement tout de suite
+            $import = new ExcelImport($request->input('reference'), $id);
+            Excel::import($import, $file);
+
+            // Vérifier les erreurs d'importation
+            if (!empty($import->getErrors())) {
+                DB::rollBack();
+                return redirect()->back()->withErrors(['error' => implode('; ', $import->getErrors())]);
+            }
+
+            // Créer l'enregistrement du fichier Excel seulement si l'importation a réussi
+            $excelFile = ExcelFile::create([
+                'path' => $filePath,
+                'name' => $file->getClientOriginalName(),
+            ]);
+
+            // Enregistrez les résultats avec l'ID du fichier Excel
+            $import->saveResults($excelFile->id);
+
+            DB::commit();
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return redirect()->back()->withErrors(['error' => 'Erreur lors de l\'importation du fichier Excel.']);
+        }
+
+        return redirect()->back()->with('success', 'Fichier importé et calculé avec succès.');
     }
 
-    return redirect()->back()->with('success', 'Fichier importé et calculé avec succès.');
-}
 
     public function analyzeAndTranslate(Request $request)
     {
@@ -201,36 +198,57 @@ class FormulaController extends Controller
 
     public function showResults($id)
 {
-    // Récupérer le calcul avec l'ID spécifié et charger ses résultats
     $calculation = Calcul::with('results')->findOrFail($id);
 
-    // Initialiser un tableau vide pour les données de résultats
     $resultsData = [];
+    $headers = [];
 
-    // Parcourir les résultats associés au calcul
     foreach ($calculation->results as $result) {
-        $resultData = $result->result_data; // Ce champ est un JSON, donc on le décode
-
-        // Vérifier si $resultData est une chaîne JSON ou déjà un tableau
-        if (is_string($resultData)) {
-            $resultData = json_decode($resultData, true); // Décoder le JSON en tableau
-        }
+        // Supposons que result_data est toujours un tableau
+        $resultData = $result->result_data;
 
         if (is_array($resultData)) {
+            // Vérifiez si les en-têtes sont présents
+            if (isset($resultData['headers'])) {
+                $headers = $resultData['headers']; // Stocker les en-têtes
+            }
+
+            // Ajoutez les résultats
+            if (isset($resultData['results'])) {
+                foreach ($resultData['results'] as $item) {
+                    if (is_array($item)) {
+                        $resultsData[] = $item; // Ajouter les résultats
+                    }
+                }
+            }
+        }
+    }
+
+    return view('formulas.results', compact('resultsData', 'id', 'headers'));
+}
+
+
+
+
+public function showGraph($id)
+{
+    $calcul = Calcul::with('results')->findOrFail($id);
+    
+    $resultsData = [];
+    foreach ($calcul->results as $result) {
+        $resultData = $result->result_data;
+        if (is_string($resultData)) {
+            $resultData = json_decode($resultData, true);
+        }
+        if (is_array($resultData)) {
             foreach ($resultData as $item) {
-                // Supposons que $item est une chaîne de caractères au format "op1 op2 ... = result"
-                // Diviser la chaîne en utilisant le signe "=" pour séparer les opérandes du résultat
                 $parts = explode('=', $item);
                 if (count($parts) === 2) {
                     $operands = trim($parts[0]);
                     $result = trim($parts[1]);
 
-                    // Supprimer les signes d'opération et conserver uniquement les nombres
-                    $operandParts = preg_split('/\D+/', $operands, -1, PREG_SPLIT_NO_EMPTY);
-
-                    // Ajouter au tableau des résultats
                     $resultsData[] = [
-                        'operands' => $operandParts,
+                        'operands' => $operands,
                         'result' => $result,
                     ];
                 }
@@ -238,31 +256,11 @@ class FormulaController extends Controller
         }
     }
 
-    // Retourner la vue avec les données de résultats et l'ID de calcul
-    return view('formulas.results', compact('resultsData', 'id'));
-}
+    // Log or dd the resultsData to check its structure
+    Log::info('Results Data:', $resultsData);
 
-
-
-
-
-
-
-public function showGraph($id)
-{
-    $calcul = Calcul::with('result')->findOrFail($id);
-    
-    // Vérifiez si result_data est déjà un tableau
-    if (is_string($calcul->result->result_data)) {
-        $resultsData = json_decode($calcul->result->result_data, true);
-    } else {
-        $resultsData = $calcul->result->result_data; // Si c'est déjà un tableau
-    }
- 
     return view('formulas.graph', compact('resultsData', 'calcul'));
 }
-
-
 
 
     

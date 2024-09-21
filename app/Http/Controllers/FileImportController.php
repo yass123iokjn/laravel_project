@@ -91,9 +91,8 @@ class FileImportController extends Controller
     }
 
     public function results()
-{
-    $calculations = Calcul::with('formula', 'result')->get();
-    return view('formulas.results', compact('calculations'));
-}
-
+    {
+        $calculations = Calcul::with('formula', 'result')->get();
+        return view('formulas.results', compact('calculations'));
+    }
 }
