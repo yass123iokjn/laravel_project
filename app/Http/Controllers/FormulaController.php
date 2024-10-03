@@ -145,50 +145,43 @@ class FormulaController extends Controller
 
 
     public function analyzeAndTranslate(Request $request)
-    {
-        try {
-            // Log de début de la méthode
-            Log::info('Début de la méthode analyzeAndTranslate');
+{
+    $sentence = $request->input('sentence');
 
-            $sentence = $request->input('sentence');
-
-            // Log de la phrase reçue
-            Log::info('Phrase reçue : ' . $sentence);
-
-            // Valider que la phrase est bien envoyée
-            if (!$sentence) {
-                Log::error('La phrase est manquante');
-                return response()->json(['error' => 'La phrase est manquante.'], 400);
-            }
-
-            // Appelez l'API OpenAI pour analyser et traduire la phrase
-            $response = OpenAI::completions()->create([
-                'model' => 'text-davinci-003',
-                'prompt' => "Analyser la phrase suivante et traduisez-la en une formule mathématique: {$sentence}",
-                'max_tokens' => 100,
-                'temperature' => 0.5,
-            ]);
-
-            // Log de la réponse de l'API OpenAI
-            Log::info('Réponse OpenAI : ' . json_encode($response));
-
-            // Extraire la formule de la réponse OpenAI
-            if (isset($response['choices'][0]['text'])) {
-                $formula = $response['choices'][0]['text'];
-                Log::info('Formule générée : ' . $formula);
-                return response()->json(['formula' => trim($formula)]);
-            } else {
-                Log::error('Aucune formule générée par OpenAI');
-                return response()->json(['error' => 'Aucune formule générée.'], 500);
-            }
-        } catch (Exception $e) {
-            // Enregistrer l'erreur dans les logs
-            Log::error('Erreur dans analyzeAndTranslate : ' . $e->getMessage());
-
-            // Retourner une réponse JSON avec l'erreur
-            return response()->json(['error' => $e->getMessage()], 500);
-        }
+    // Vérifier si la phrase est présente
+    if (!$sentence) {
+        Log::error('Analyse échouée : phrase manquante.', ['request' => $request->all()]);
+        return response()->json(['error' => 'Phrase manquante.'], 400);
     }
+
+    try {
+        Log::info('Début de l\'analyse pour la phrase : ' . $sentence);
+        
+        // Appel à OpenAI pour générer la formule à partir de la phrase
+        $response = OpenAI::completions()->create([
+            'model' => 'text-davinci-003',
+            'prompt' => 'Traduire cette description en une formule mathématique: ' . $sentence,
+            'max_tokens' => 60,
+            'temperature' => 0.7,
+        ]);
+
+        // Vérifier si le résultat contient des choix
+        if (!isset($response['choices']) || empty($response['choices'])) {
+            Log::error('Aucune réponse de l\'API OpenAI.', ['response' => $response]);
+            return response()->json(['error' => 'Erreur lors de la génération de la formule.'], 500);
+        }
+
+        // Extraire la formule du résultat
+        $formula = trim($response['choices'][0]['text']);
+
+        Log::info('Analyse réussie : formule générée', ['formula' => $formula]);
+
+        return response()->json(['formula' => $formula]);
+
+    } catch (\Exception $e) {
+        Log::error('Erreur lors de la génération de la formule : ' . $e->getMessage(), ['exception' => $e]);
+        return response()->json(['error' => 'Erreur lors de la génération de la formule.'], 500);
+    }}
 
     public function confirmDelete($id)
     {
@@ -232,35 +225,28 @@ class FormulaController extends Controller
 
 public function showGraph($id)
 {
-    $calcul = Calcul::with('results')->findOrFail($id);
-    
+    // Récupérer les résultats et en-têtes pour le calcul donné
+    $calculation = Calcul::with('results')->findOrFail($id);
     $resultsData = [];
-    foreach ($calcul->results as $result) {
-        $resultData = $result->result_data;
-        if (is_string($resultData)) {
-            $resultData = json_decode($resultData, true);
-        }
-        if (is_array($resultData)) {
-            foreach ($resultData as $item) {
-                $parts = explode('=', $item);
-                if (count($parts) === 2) {
-                    $operands = trim($parts[0]);
-                    $result = trim($parts[1]);
+    $headers = [];
 
-                    $resultsData[] = [
-                        'operands' => $operands,
-                        'result' => $result,
-                    ];
-                }
+    foreach ($calculation->results as $result) {
+        $resultData = $result->result_data;
+
+        if (is_array($resultData)) {
+            if (isset($resultData['headers'])) {
+                $headers = $resultData['headers']; // En-têtes des colonnes
+            }
+
+            if (isset($resultData['results'])) {
+                $resultsData = $resultData['results']; // Résultats des calculs
             }
         }
     }
 
-    // Log or dd the resultsData to check its structure
-    Log::info('Results Data:', $resultsData);
-
-    return view('formulas.graph', compact('resultsData', 'calcul'));
+    return view('formulas.graph', compact('resultsData', 'headers'));
 }
+
 
 
     

@@ -24,32 +24,32 @@
                     @if(!empty($resultsData) && is_array($resultsData))
 
                     <table class="table-auto w-full">
-    <thead>
-        <tr>
-            @if(!empty($headers) && is_array($headers))
-                @foreach($headers as $header)
-                    <th class="border px-4 py-2">{{ ucfirst($header) }}</th>
-                @endforeach
-                <th class="border px-4 py-2">Résultat</th>
-            @endif
-        </tr>
-    </thead>
-    <tbody>
-        @foreach($resultsData as $result)
-            <tr>
-                @foreach($result as $operand) <!-- Assurez-vous que $operand est une chaîne -->
-                    <td class="border px-4 py-2">{{ is_array($operand) ? implode(', ', $operand) : $operand }}</td>
-                @endforeach
-            </tr>
-        @endforeach
-    </tbody>
-</table>
+                        <thead>
+                            <tr>
+                                @if(!empty($headers) && is_array($headers))
+                                    @foreach($headers as $header)
+                                        <th class="border px-4 py-2">{{ ucfirst($header) }}</th>
+                                    @endforeach
+                                    <th class="border px-4 py-2">Résultat</th>
+                                @endif
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($resultsData as $result)
+                                <tr>
+                                    @foreach($result as $operand)
+                                        <td class="border px-4 py-2">{{ is_array($operand) ? implode(', ', $operand) : $operand }}</td>
+                                    @endforeach
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
 
-
-
-                        <div class="mt-6">
-                            <a href="{{ route('formulas.graph', ['id' => $id]) }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                                Afficher le Graphique
+                        <!-- Bouton pour afficher le graphique -->
+                        <div class="mt-6 text-center">
+                            <a href="{{ route('formulas.graph', ['id' => $id]) }}" 
+                               class="inline-block bg-navy-700 hover:bg-navy-900 text-black  py-3 px-6 rounded-lg shadow-md transition-transform  transform hover:scale-105">
+                                Show Graph
                             </a>
                         </div>
                     @else
