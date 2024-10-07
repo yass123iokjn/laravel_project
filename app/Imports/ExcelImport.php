@@ -13,45 +13,47 @@ class ExcelImport implements ToModel, WithHeadingRow
 {
     protected $reference;
     protected $formulaId;
+    protected $nomCalcul; // Consider using or removing if unnecessary
     protected $errors = [];
     protected $results = [];
     protected $evaluatedExpressions = [];
     protected $headers = [];
 
-    public function __construct($reference, $formulaId)
+    public function __construct($reference, $formulaId, $nomCalcul)
     {
         $this->reference = $reference;
         $this->formulaId = $formulaId;
+        $this->nomCalcul = $nomCalcul;
     }
 
     public function model(array $row)
-{
-    if (empty($this->headers)) {
-        $this->headers = array_keys($row);
+    {
+        // Initialize headers on the first row
+        if (empty($this->headers)) {
+            $this->headers = array_keys($row);
+        }
+
+        $formula = Formula::find($this->formulaId);
+        if (!$formula) {
+            $this->addError('Formule non trouvée.');
+            return null;
+        }
+
+        $resultData = $this->applyFormula($formula->expression, $row);
+
+        if (isset($resultData['error'])) {
+            $this->addError($resultData['error']);
+            return null;
+        }
+
+        // Store only input values and the result
+        $this->results[] = array_merge(
+            array_values($row), // Column values
+            [$resultData['result']] // Add the result
+        );
+
+        return null; // Indicate no model to return
     }
-
-    $formula = Formula::find($this->formulaId);
-    if (!$formula) {
-        $this->addError('Formule non trouvée.');
-        return null;
-    }
-
-    $resultData = $this->applyFormula($formula->expression, $row);
-
-    if (isset($resultData['error'])) {
-        $this->addError($resultData['error']);
-        return null;
-    }
-
-    // Stocker uniquement les valeurs d'entrée et le résultat
-    $this->results[] = array_merge(
-        array_values($row), // Valeurs des colonnes Ex, F, G
-        [$resultData['result']] // Ajouter le résultat
-    );
-
-    return null;
-}
-
 
     public function getHeaders()
     {
@@ -59,40 +61,42 @@ class ExcelImport implements ToModel, WithHeadingRow
     }
 
     protected function applyFormula($expression, $row)
-{
-    $data = array_map('floatval', $row);
-    foreach ($data as $key => $value) {
-        $expression = str_replace($key, $value, $expression);
+    {
+        // Replace each header in the expression with its corresponding value in the row
+        foreach ($this->headers as $header) {
+            if (array_key_exists($header, $row)) {
+                $expression = str_replace($header, floatval($row[$header]), $expression);
+            }
+        }
+
+        Log::info('Expression avant évaluation : ' . $expression);
+        $result = 0;
+
+        try {
+            // Evaluate the expression
+            $result = eval('return ' . $expression . ';');
+        } catch (\Throwable $e) {
+            Log::error('Erreur d\'évaluation : ' . $e->getMessage());
+            return ['error' => 'Erreur lors de l\'évaluation de l\'expression.'];
+        }
+
+        return ['result' => $result, 'expression' => $expression];
     }
 
-    Log::info('Expression avant évaluation : ' . $expression);
-    $result = 0;
+    public function saveResults($excelFileId)
+    {
+        Log::info('Résultats à sauvegarder :', ['results' => $this->results]);
 
-    try {
-        $result = eval('return ' . $expression . ';');
-    } catch (\Throwable $e) {
-        Log::error('Erreur d\'évaluation : ' . $e->getMessage());
-        return ['error' => 'Erreur lors de l\'évaluation de l\'expression.'];
+        Result::create([
+            'excel_file_id' => $excelFileId,
+            'result_data' => json_encode([ // Encode array to JSON
+                'headers' => $this->headers,
+                'results' => $this->results,
+            ]),
+            'calculated_at' => Carbon::now(),
+            'formula_id' => $this->formulaId,
+        ]);
     }
-
-    return ['result' => $result, 'expression' => $expression];
-}
-
-public function saveResults($excelFileId)
-{
-    Log::info('Résultats à sauvegarder :', ['results' => $this->results]);
-
-    Result::create([
-        'excel_file_id' => $excelFileId,
-        'result_data' => json_encode([
-            'headers' => $this->headers,
-            'results' => $this->results,
-        ]), // Encode the array to a JSON string
-        'calculated_at' => Carbon::now(),
-        'formula_id' => $this->formulaId,
-    ]);
-}
-
 
     public function getErrors()
     {

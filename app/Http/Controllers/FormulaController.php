@@ -24,18 +24,24 @@ class FormulaController extends Controller
     public function index(Request $request)
 {
     $search = $request->input('search');
+    $searchType = $request->input('search_type', 'expression'); 
+
+    $formulas = Formula::query();
 
     if ($search) {
-        $formulas = Formula::where('name', 'like', "%{$search}%")
-            ->orWhere('expression', 'like', "%{$search}%")
-            ->get();
-    } else {
-        $formulas = Formula::all();
+        if ($searchType == 'name') {
+            $formulas = $formulas->where('name', 'like', '%' . $search . '%');
+        } else {
+            $formulas = $formulas->where('expression', 'like', '%' . $search . '%');
+        }
     }
 
-    // Vérifiez que vous passez bien la variable $formulas à la vue
+    $formulas = $formulas->paginate(6); 
+
     return view('formulas.index', compact('formulas'));
 }
+
+
 
     public function create()
     {
@@ -97,51 +103,52 @@ class FormulaController extends Controller
     }
 
     public function import(Request $request, $id)
-    {
-        $request->validate([
-            'file' => 'required|mimes:xls,xlsx',
-            'reference' => 'required|string',
+{
+    $request->validate([
+        'file' => 'required|mimes:xls,xlsx',
+        'reference' => 'required|string',
+        'nom_calcul' => 'required|string|max:255', // Validation pour le nom de calcul
+    ]);
+
+    $formula = Formula::find($id);
+    if (!$formula) {
+        return redirect()->back()->withErrors(['error' => 'Formule non trouvée.']);
+    }
+
+    try {
+        DB::beginTransaction();
+
+        $file = $request->file('file');
+        $filePath = $file->store('excel_files');
+
+        // Importer le fichier Excel sans créer l'enregistrement tout de suite
+        $import = new ExcelImport($request->input('reference'), $id, $request->input('nom_calcul')); // Passer le nom_calcul
+        Excel::import($import, $file);
+
+        // Vérifier les erreurs d'importation
+        if (!empty($import->getErrors())) {
+            DB::rollBack();
+            return redirect()->back()->withErrors(['error' => implode('; ', $import->getErrors())]);
+        }
+
+        // Créer l'enregistrement du fichier Excel seulement si l'importation a réussi
+        $excelFile = ExcelFile::create([
+            'path' => $filePath,
+            'name' => $file->getClientOriginalName(),
         ]);
 
-        $formula = Formula::find($id);
-        if (!$formula) {
-            return redirect()->back()->withErrors(['error' => 'Formule non trouvée.']);
-        }
+        // Enregistrez les résultats avec l'ID du fichier Excel
+        $import->saveResults($excelFile->id);
 
-        try {
-            DB::beginTransaction();
+        DB::commit();
 
-            $file = $request->file('file');
-            $filePath = $file->store('excel_files');
-
-            // Importer le fichier Excel sans créer l'enregistrement tout de suite
-            $import = new ExcelImport($request->input('reference'), $id);
-            Excel::import($import, $file);
-
-            // Vérifier les erreurs d'importation
-            if (!empty($import->getErrors())) {
-                DB::rollBack();
-                return redirect()->back()->withErrors(['error' => implode('; ', $import->getErrors())]);
-            }
-
-            // Créer l'enregistrement du fichier Excel seulement si l'importation a réussi
-            $excelFile = ExcelFile::create([
-                'path' => $filePath,
-                'name' => $file->getClientOriginalName(),
-            ]);
-
-            // Enregistrez les résultats avec l'ID du fichier Excel
-            $import->saveResults($excelFile->id);
-
-            DB::commit();
-
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return redirect()->back()->withErrors(['error' => 'Erreur lors de l\'importation du fichier Excel.']);
-        }
-
-        return redirect()->back()->with('success', 'Fichier importé et calculé avec succès.');
+    } catch (\Throwable $e) {
+        DB::rollBack();
+        return redirect()->back()->withErrors(['error' => 'Erreur lors de l\'importation du fichier Excel.']);
     }
+
+    return redirect()->back()->with('success', 'Fichier importé et calculé avec succès.');
+}
 
 
     public function analyzeAndTranslate(Request $request)

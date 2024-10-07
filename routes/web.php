@@ -36,4 +36,6 @@ Route::get('formulas/{id}/results', [FormulaController::class, 'showResults'])->
 Route::get('formulas/{id}/graph', [FormulaController::class, 'showGraph'])->name('formulas.graph');
 
 
+Route::delete('/formulas/import/{id}', [FileImportController::class, 'destroy'])->name('formulas.deleteImport');
+
 require __DIR__.'/auth.php';
