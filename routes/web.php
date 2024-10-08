@@ -38,4 +38,9 @@ Route::get('formulas/{id}/graph', [FormulaController::class, 'showGraph'])->name
 
 Route::delete('/formulas/import/{id}', [FileImportController::class, 'destroy'])->name('formulas.deleteImport');
 
+Route::get('/formulas/{id}/generatePdf', [FormulaController::class, 'generatePdf'])->name('pdf.report');
+
+
+
+
 require __DIR__.'/auth.php';

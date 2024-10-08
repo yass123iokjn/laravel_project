@@ -13,9 +13,11 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Maatwebsite\Excel\Facades\Excel; // Assurez-vous d'importer la façade Excel
 use App\Imports\ExcelImport; // Importez la classe ExcelImport
 use App\Models\Calcul;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
 use OpenAI\Laravel\Facades\OpenAI;
 use Exception;
+use Illuminate\Support\Facades\Storage;
 
 class FormulaController extends Controller
 {
@@ -232,6 +234,14 @@ class FormulaController extends Controller
 
 public function showGraph($id)
 {
+    $calculation = Calcul::find($id);
+
+    if (!$calculation) {
+        abort(404); // Renvoie une erreur 404 si le calcul n'existe pas
+    }
+
+    // Récupérer la formule associée
+    $formula = $calculation->formula; 
     // Récupérer les résultats et en-têtes pour le calcul donné
     $calculation = Calcul::with('results')->findOrFail($id);
     $resultsData = [];
@@ -251,10 +261,70 @@ public function showGraph($id)
         }
     }
 
-    return view('formulas.graph', compact('resultsData', 'headers'));
+    return view('formulas.graph', compact( 'formula','headers', 'resultsData'));
+    
+}
+
+public function generatePdf(Request $request, $id)
+{
+    $formula = Formula::findOrFail($id);
+    $calcul = Calcul::where('formula_id', $id)->latest()->first();
+    
+    if (!$calcul) {
+        return redirect()->back()->withErrors(['error' => 'Aucun calcul trouvé pour cette formule.']);
+    }
+
+    // Récupérer le fichier Excel et les résultats associés
+    $excelFile = ExcelFile::find($calcul->excel_file_id);
+    $results = Result::where('formula_id', $id)->get();
+
+    // Préparer les données pour $resultsData et $headers
+    $resultsData = [];
+    $headers = [];
+
+    if ($results->isNotEmpty()) {
+        foreach ($results as $result) {
+            $resultData = $result->result_data;
+
+            if (is_array($resultData)) {
+                if (isset($resultData['headers'])) {
+                    $headers = $resultData['headers'];
+                }
+                if (isset($resultData['results'])) {
+                    foreach ($resultData['results'] as $item) {
+                        if (is_array($item) && !in_array($item, $resultsData)) {
+                            $resultsData[] = $item;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Récupérer l'image du graphique (base64) depuis la requête
+    $imageBase64 = $request->input('chartImage'); // Recevoir l'image base64
+    $imagePath = null;
+
+    if ($imageBase64) {
+        // Décodez et enregistrez l'image
+        list($type, $imageData) = explode(';', $imageBase64);
+        list(, $imageData) = explode(',', $imageData);
+        $imageData = base64_decode($imageData);
+
+        // Créez un nom de fichier pour l'image
+        $imageName = 'chart_' . time() . '.png';
+        Storage::put('public/charts/' . $imageName, $imageData);
+        $imagePath = 'public/charts/' . $imageName; // Chemin de l'image
+    }
+
+    // Générez le PDF
+    $pdf = Pdf::loadView('pdf.report', compact('formula', 'excelFile', 'resultsData', 'headers', 'imagePath'));
+
+    return $pdf->download('rapport_' . $formula->id . '.pdf');
 }
 
 
 
-    
+
+
 }

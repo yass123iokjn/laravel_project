@@ -171,6 +171,7 @@ return [
        
         // OpenAI Service Provider
         OpenAI\Laravel\ServiceProvider::class,
+        Barryvdh\DomPDF\ServiceProvider::class,
 
     ],
 
@@ -225,6 +226,8 @@ return [
 
         // OpenAI Facade
         'OpenAI' => OpenAI\Laravel\Facades\OpenAI::class,
+        'PDF' => Barryvdh\DomPDF\Facade::class,
+
 
     ],
 

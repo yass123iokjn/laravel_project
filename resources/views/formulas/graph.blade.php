@@ -36,6 +36,13 @@
                 </div>
             </div>
         </div>
+        <div class="flex justify-center mt-8">
+            <a href="{{ route('pdf.report', $formula->id) }}" class="btn-create-formula mt-8 px-8 py-4">
+                Télécharger le PDF
+            </a>
+        </div>
+
+        <input type="hidden" id="hiddenImageInput" name="chartImage">
     </div>
 </x-app-layout>
 
@@ -76,7 +83,7 @@
     .text-gray-100 {
         color: white;
     }
-    
+
     canvas {
         display: block;
         margin: 0 auto;
@@ -90,96 +97,98 @@
     let chart; // Variable to hold the chart instance
 
     document.getElementById('generateGraphBtn').addEventListener('click', function() {
-    const operand = document.getElementById('operandSelect').value; // Get the selected operand
-    const chartType = document.getElementById('chartTypeSelect').value; // Get the selected chart type
+        const operand = document.getElementById('operandSelect').value; // Get the selected operand
+        const chartType = document.getElementById('chartTypeSelect').value; // Get the selected chart type
 
-    const data = @json($resultsData); // Data extracted from import results
-    const headers = {!! json_encode($headers) !!}; // Encode headers as JavaScript array
+        const data = @json($resultsData); // Data extracted from import results
+        const headers = {!! json_encode($headers) !!}; // Encode headers as JavaScript array
 
-    // Get the index of the selected operand
-    const operandIndex = headers.indexOf(operand);
-    
-    // Validate operand index
-    if (operandIndex === -1) {
-        console.error("Operand not found in headers.");
-        return; // Exit if the operand is not found
-    }
-
-    // Update labels to use the selected operand instead of the first column
-    const labels = data.map(row => row[operandIndex]); // Use the selected operand values for the x-axis
-    const operandData = data.map(row => row[operandIndex]); // Get values for the selected operand
-    const resultData = data.map(row => row[3]); // Assuming "Résultat" is always in the fourth column
-
-    // Generate random pastel colors for the chart
-    function getRandomPastelColor() {
-        const r = Math.floor(Math.random() * 127 + 127);
-        const g = Math.floor(Math.random() * 127 + 127);
-        const b = Math.floor(Math.random() * 127 + 127);
-        return `rgba(${r}, ${g}, ${b}, 0.7)`; // Opacité à 0.7
-    }
-
-    const backgroundColors = operandData.map(() => getRandomPastelColor());
-    const borderColors = chartType === 'line' ? operandData.map(() => getRandomPastelColor()) : [];
-
-    const ctx = document.getElementById('chartCanvas').getContext('2d');
-
-    // Clear the existing chart instance if it exists
-    if (chart) {
-        chart.destroy(); // Destroy the existing chart instance
-    }
-
-    let chartConfig = {
-        type: chartType === 'area' ? 'line' : chartType, // Use 'line' for area charts
-        data: {
-            labels: labels, // Using the selected operand values for X-axis
-            datasets: [{
-                label: `Graphique de ${operand}`,
-                data: resultData, // Always show results on the Y-axis
-                backgroundColor: backgroundColors,
-                borderColor: chartType === 'line' ? borderColors : [],
-                borderWidth: chartType === 'line' ? 3 : 0,
-                fill: chartType === 'area' // Fill area if the chart type is 'area'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false, // Ensures the canvas maintains the correct aspect ratio
-            scales: {
-                x: {
-                    title: {
-                        display: true,
-                        text: operand // Label for x-axis
-                    }
-                },
-                y: {
-                    beginAtZero: false,
-                    title: {
-                        display: true,
-                        text: 'Résultat' // Label for y-axis
-                    }
-                }
-            }
+        // Get the index of the selected operand
+        const operandIndex = headers.indexOf(operand);
+        
+        // Validate operand index
+        if (operandIndex === -1) {
+            console.error("Operand not found in headers.");
+            return; // Exit if the operand is not found
         }
-    };
 
-    // Chart type-specific configuration
-    if (chartType === 'pie') {
-        chartConfig.options.plugins = {
-            tooltip: {
-                callbacks: {
-                    label: function(tooltipItem) {
-                        const total = tooltipItem.dataset.data.reduce((a, b) => a + b, 0);
-                        const currentValue = tooltipItem.raw;
-                        const percentage = Math.floor((currentValue / total) * 100 + 0.5);         
-                        return currentValue + ' (' + percentage + '%)'; // Show percentage
+        // Update labels to use the selected operand instead of the first column
+        const labels = data.map(row => row[operandIndex]); // Use the selected operand values for the x-axis
+        const operandData = data.map(row => row[operandIndex]); // Get values for the selected operand
+        const resultData = data.map(row => row[3]); // Assuming "Résultat" is always in the fourth column
+
+        // Generate random pastel colors for the chart
+        function getRandomPastelColor() {
+            const r = Math.floor(Math.random() * 127 + 127);
+            const g = Math.floor(Math.random() * 127 + 127);
+            const b = Math.floor(Math.random() * 127 + 127);
+            return `rgba(${r}, ${g}, ${b}, 0.7)`; // Opacité à 0.7
+        }
+
+        const backgroundColors = operandData.map(() => getRandomPastelColor());
+        const borderColors = chartType === 'line' ? operandData.map(() => getRandomPastelColor()) : [];
+
+        const ctx = document.getElementById('chartCanvas').getContext('2d');
+
+        // Clear the existing chart instance if it exists
+        if (chart) {
+            chart.destroy(); // Destroy the existing chart instance
+        }
+
+        let chartConfig = {
+            type: chartType === 'area' ? 'line' : chartType, // Use 'line' for area charts
+            data: {
+                labels: labels, // Using the selected operand values for X-axis
+                datasets: [{
+                    label: `Graphique de ${operand}`,
+                    data: resultData, // Always show results on the Y-axis
+                    backgroundColor: backgroundColors,
+                    borderColor: chartType === 'line' ? borderColors : [],
+                    borderWidth: chartType === 'line' ? 3 : 0,
+                    fill: chartType === 'area' // Fill area if the chart type is 'area'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false, // Ensures the canvas maintains the correct aspect ratio
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: operand // Label for x-axis
+                        }
+                    },
+                    y: {
+                        beginAtZero: false,
+                        title: {
+                            display: true,
+                            text: 'Résultat' // Label for y-axis
+                        }
                     }
                 }
             }
         };
-    }
 
-    chart = new Chart(ctx, chartConfig); // Create the new chart instance
-});
+        // Chart type-specific configuration
+        if (chartType === 'pie') {
+            chartConfig.options.plugins = {
+                tooltip: {
+                    callbacks: {
+                        label: function(tooltipItem) {
+                            const total = tooltipItem.dataset.data.reduce((a, b) => a + b, 0);
+                            const currentValue = tooltipItem.raw;
+                            const percentage = Math.floor((currentValue / total) * 100 + 0.5);         
+                            return currentValue + ' (' + percentage + '%)'; // Show percentage
+                        }
+                    }
+                }
+            };
+        }
 
+        chart = new Chart(ctx, chartConfig); // Create the new chart instance
 
+        // Sauvegarder l'image du graphique en base64
+        const imageBase64 = chart.toBase64Image(); // Récupérer l'image en base64
+        document.getElementById('hiddenImageInput').value = imageBase64; // Si vous avez un input caché
+    });
 </script>
