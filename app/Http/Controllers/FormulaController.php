@@ -302,25 +302,12 @@ public function generatePdf(Request $request, $id)
     }
 
     // Récupérer l'image du graphique (base64) depuis la requête
-    $imageBase64 = $request->input('chartImage'); // Recevoir l'image base64
-    $imagePath = null;
+    $chartImage = $request->input('chartImage'); // L'image est en format Base64
 
-    if ($imageBase64) {
-        // Décodez et enregistrez l'image
-        list($type, $imageData) = explode(';', $imageBase64);
-        list(, $imageData) = explode(',', $imageData);
-        $imageData = base64_decode($imageData);
-
-        // Créez un nom de fichier pour l'image
-        $imageName = 'chart_' . time() . '.png';
-        Storage::put('public/charts/' . $imageName, $imageData);
-        $imagePath = 'public/charts/' . $imageName; // Chemin de l'image
-    }
-
-    // Générez le PDF
-    $pdf = Pdf::loadView('pdf.report', compact('formula', 'excelFile', 'resultsData', 'headers', 'imagePath'));
-
-    return $pdf->download('rapport_' . $formula->id . '.pdf');
+    // Générer le PDF en incluant l'image du graphique
+    $pdf =Pdf::loadView('pdf.report', compact('formula', 'excelFile', 'resultsData', 'headers', 'chartImage'));
+    
+    return $pdf->download('rapport.pdf');
 }
 
 

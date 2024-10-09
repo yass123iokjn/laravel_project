@@ -62,12 +62,11 @@
         </tbody>
     </table>
 
-    <div class="chart-container">
-        <h1>Graphique de {{ $formula->name }}</h1>
-        @if($imagePath)
-        <img src="{{ storage_path($imagePath) }}" alt="Graphique" style="max-width: 100%; height: auto;">
-        @endif
-    </div>
+    <h2>Affichage graphique</h2>
+@if($chartImage)
+    <img src="{{ $chartImage }}" alt="Graphique" style="max-width: 100%; height: auto;">
+@endif
+
 
 </body>
 

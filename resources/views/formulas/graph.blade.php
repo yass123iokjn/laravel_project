@@ -18,7 +18,7 @@
                             <option value="line">Graphique en ligne</option>
                             <option value="bar">Graphique à barres</option>
                             <option value="pie">Graphique circulaire</option>
-                            <option value="area">Graphique en aires</option> <!-- Ajout du graphique en aires -->
+                            <option value="area">Graphique en aires</option>
                         </select>
                     </div>
                 </div>
@@ -34,18 +34,21 @@
                 <div class="mt-4 bg-white rounded-lg shadow-lg p-6">
                     <canvas id="chartCanvas" class="canvas-size"></canvas>
                 </div>
+
+                <!-- Champ caché pour l'image du graphique -->
+                <input type="hidden" id="chartImage" name="chartImage">
             </div>
         </div>
         <div class="flex justify-center mt-8">
-            <a href="{{ route('pdf.report', $formula->id) }}" class="btn-create-formula mt-8 px-8 py-4">
-                Télécharger le PDF
-            </a>
-        </div>
+        <form action="{{ route('pdf.report', $formula->id) }}" method="POST">
+    @csrf
+    <input type="hidden" name="chartImage" id="chartImageHidden"> <!-- Champ caché pour l'image Base64 -->
+    <button type="submit" class="btn-create-formula mt-8 px-8 py-4">Télécharger le PDF</button>
+</form>
 
-        <input type="hidden" id="hiddenImageInput" name="chartImage">
+        </div>
     </div>
 </x-app-layout>
-
 <style>
     .bg-custom {
         background-image: url('https://as2.ftcdn.net/v2/jpg/00/92/09/67/1000_F_92096720_BEfbFVfNCrWL6sogJYQ4Qt5Oq8rFNrGO.jpg');
@@ -187,8 +190,13 @@
 
         chart = new Chart(ctx, chartConfig); // Create the new chart instance
 
-        // Sauvegarder l'image du graphique en base64
-        const imageBase64 = chart.toBase64Image(); // Récupérer l'image en base64
-        document.getElementById('hiddenImageInput').value = imageBase64; // Si vous avez un input caché
+        // Attendre un moment pour s'assurer que le graphique est entièrement chargé
+        setTimeout(() => {
+            // Utiliser toBase64Image() pour convertir le graphique en image
+            var image = chart.toBase64Image();
+            document.getElementById('chartImage').value = image; // Store base64 image in hidden input
+            document.getElementById('chartImageHidden').value = image; // Ajout dans le champ caché pour l'envoi du formulaire
+            console.log("Base64 Image: ", image);
+        }, 1000); // 100 ms pour s'assurer que le rendu est terminé
     });
 </script>
