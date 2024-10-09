@@ -197,6 +197,6 @@
             document.getElementById('chartImage').value = image; // Store base64 image in hidden input
             document.getElementById('chartImageHidden').value = image; // Ajout dans le champ caché pour l'envoi du formulaire
             console.log("Base64 Image: ", image);
-        }, 1000); // 100 ms pour s'assurer que le rendu est terminé
+        }, 1000); // 1000 ms pour s'assurer que le rendu est terminé
     });
 </script>
