@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div class="bg-custom">
+    <div class="bg-custom bg-cover bg-center">
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <h2 class="font-extrabold text-5xl text-gray-800 leading-tight text-center mb-8">
@@ -48,7 +48,7 @@
                         <!-- Bouton pour afficher le graphique -->
                         <div class="mt-6 text-center">
                             <a href="{{ route('formulas.graph', ['id' => $id]) }}" 
-                               class="inline-block bg-navy-700 hover:bg-navy-900 text-black  py-3 px-6 rounded-lg shadow-md transition-transform  transform hover:scale-105">
+                               class="inline-block bg-blue-500 hover:bg-blue-700 text-white py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">
                                 Show Graph
                             </a>
                         </div>
@@ -59,4 +59,16 @@
             </div>
         </div>
     </div>
+
+    <style>
+        .bg-custom {
+            background-image: url('{{ asset('images/board-5599231_1280.png') }}');
+            background-size: cover;
+            background-position: center;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
 </x-app-layout>

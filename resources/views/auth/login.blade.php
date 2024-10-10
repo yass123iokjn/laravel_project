@@ -1,44 +1,303 @@
-<x-guest-layout>
-    <!-- Session Status -->
-    <x-auth-session-status class="mb-4" :status="session('status')" />
+<!DOCTYPE html>
+<html lang="en">
 
-    <form method="POST" action="{{ route('login') }}">
-        @csrf
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('css/style.css') }}"> <!-- Use your local CSS file -->
+    <script src="https://kit.fontawesome.com/a81368914c.js"></script> <!-- Font Awesome for icons -->
+</head>
 
-        <!-- Email Address -->
-        <div>
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
-            <x-input-error :messages="$errors->get('email')" class="mt-2" />
+<body class="overflow-hidden" style="background-color: #eafaf1;">
+    <img class="wave animate-wave" src="{{ asset('images/wave.png') }}" alt="Wave Background">
+    <img class="wave-top-right" src="{{ asset('images/wave.png') }}" alt="Top Right Wave">
+
+    <div class="container mx-auto flex items-center justify-center min-h-screen">
+        <div class="img">
+            <img src="{{ asset('images/undraw_mobile_login_re_9ntv.svg') }}" alt="Login Illustration" class="w-96 transition-transform duration-700 animate-slide-in">
         </div>
+        <div class="login-content bg-white p-6 rounded-lg shadow-md w-full max-w-md">
+            <form method="POST" action="{{ route('login') }}">
+                @csrf <!-- CSRF Token for security -->
+                <img src="{{ asset('images/avatar.svg') }}" alt="Avatar" class="h-24 mx-auto mb-4">
+                <h2 class="title text-2xl font-bold text-center text-gray-700">Welcome</h2>
 
-        <!-- Password -->
-        <div class="mt-4">
-            <x-input-label for="password" :value="__('Password')" />
+                <!-- Email Address -->
+                <div class="input-div one mt-6">
+                    <div class="i">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="div">
+                        <h5>Email</h5>
+                        <input id="email" class="input border-b border-gray-300 focus:border-green-500 outline-none transition duration-300" type="email" name="email" required autofocus autocomplete="email">
+                    </div>
+                </div>
 
-            <x-text-input id="password" class="block mt-1 w-full" type="password" name="password" required autocomplete="current-password" />
+                <!-- Password -->
+                <div class="input-div pass mt-4">
+                    <div class="i">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    <div class="div">
+                        <h5>Password</h5>
+                        <input id="password" class="input border-b border-gray-300 focus:border-green-500 outline-none transition duration-300" type="password" name="password" required autocomplete="current-password">
+                    </div>
+                </div>
 
-            <x-input-error :messages="$errors->get('password')" class="mt-2" />
+                <!-- Remember Me -->
+                <div class="flex justify-between items-center mt-4">
+                    <label for="remember_me" class="inline-flex items-center">
+                        <input id="remember_me" type="checkbox" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" name="remember">
+                        <span class="ms-2 text-sm text-gray-600">Remember me</span>
+                    </label>
+                    <a href="{{ route('password.request') }}" class="text-sm text-gray-600 hover:text-green-500">Forgot Password?</a>
+                </div>
+
+                <input type="submit" class="btn bg-gradient-to-r from-green-400 to-green-500 text-white py-2 rounded-full mt-4 w-full cursor-pointer transition duration-300 hover:scale-105" value="Login">
+            </form>
         </div>
+    </div>
 
-        <!-- Remember Me -->
-        <div class="block mt-4">
-            <label for="remember_me" class="inline-flex items-center">
-                <input id="remember_me" type="checkbox" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" name="remember">
-                <span class="ms-2 text-sm text-gray-600">{{ __('Remember me') }}</span>
-            </label>
-        </div>
+    <script src="{{ asset('js/main.js') }}"></script>
 
-        <div class="flex items-center justify-end mt-4">
-            @if (Route::has('password.request'))
-            <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="{{ route('password.request') }}">
-                {{ __('Forgot your password?') }}
-            </a>
-            @endif
+    <style>
+        /* CSS Styles */
+        * {
+            padding: 0;
+            margin: 0;
+            box-sizing: border-box;
+        }
 
-            <x-primary-button class="ms-3">
-                {{ __('Log in') }}
-            </x-primary-button>
-        </div>
-    </form>
-</x-guest-layout>
+        body {
+            font-family: 'Poppins', sans-serif;
+            overflow: hidden;
+        }
+
+        .wave {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .wave-top-right {
+            position: fixed;
+            top: 0;
+            right: 0;
+            height: 50%;
+            z-index: -1;
+            transform: rotate(180deg);
+        }
+
+        @keyframes wave-animation {
+            0% {
+                transform: translateX(0);
+            }
+
+            50% {
+                transform: translateX(-10px);
+            }
+
+            100% {
+                transform: translateX(0);
+            }
+        }
+
+        .container {
+            width: 100vw;
+            height: 100vh;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-gap: 7rem;
+            padding: 0 2rem;
+        }
+
+        .img {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        .login-content {
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            text-align: center;
+        }
+
+        .img img {
+            width: 400px;
+        }
+
+        form {
+            width: 360px;
+        }
+
+        .login-content img {
+            height: 100px;
+        }
+
+        .login-content h2 {
+            margin: 15px 0;
+            color: #333;
+            text-transform: uppercase;
+            font-size: 2.9rem;
+        }
+
+        .login-content .input-div {
+            position: relative;
+            display: grid;
+            grid-template-columns: 7% 93%;
+            margin: 25px 0;
+            padding: 5px 0;
+            border-bottom: 2px solid #d9d9d9;
+        }
+
+        .login-content .input-div.one {
+            margin-top: 0;
+        }
+
+        .i {
+            color: #d9d9d9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .i i {
+            transition: .3s;
+        }
+
+        .input-div > div {
+            position: relative;
+            height: 45px;
+        }
+
+        .input-div > div > h5 {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+            font-size: 18px;
+            transition: .3s;
+        }
+
+        .input-div:before,
+        .input-div:after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            width: 0%;
+            height: 2px;
+            background-color: #38d39f;
+            transition: .4s;
+        }
+
+        .input-div:before {
+            right: 50%;
+        }
+
+        .input-div:after {
+            left: 50%;
+        }
+
+        .input-div.focus:before,
+        .input-div.focus:after {
+            width: 50%;
+        }
+
+        .input-div.focus > div > h5 {
+            top: -5px;
+            font-size: 15px;
+        }
+
+        .input-div.focus > .i > i {
+            color: #38d39f;
+        }
+
+        .input-div > div > input {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            outline: none;
+            background: none;
+            padding: 0.5rem 0.7rem;
+            font-size: 1.2rem;
+            color: #555;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .input-div.pass {
+            margin-bottom: 4px;
+        }
+
+        a {
+            display: block;
+            text-align: right;
+            text-decoration: none;
+            color: #999;
+            font-size: 0.9rem;
+            transition: .3s;
+        }
+
+        a:hover {
+            color: #38d39f;
+        }
+
+        .btn {
+            background: linear-gradient(to right, #38d39f, #30d84a);
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 50px;
+            color: #fff;
+            font-size: 1rem;
+            transition: .3s;
+        }
+
+        .btn:hover {
+            opacity: .8;
+        }
+
+        @keyframes slide-in {
+            0% {
+                transform: translateX(-50%);
+                opacity: 0;
+            }
+
+            100% {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .animate-slide-in {
+            animation: slide-in 0.5s ease forwards;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+                padding: 0;
+            }
+
+            .img {
+                justify-content: center;
+                margin-bottom: 2rem;
+            }
+
+            .img img {
+                width: 300px;
+            }
+        }
+    </style>
+</body>
+
+</html>
