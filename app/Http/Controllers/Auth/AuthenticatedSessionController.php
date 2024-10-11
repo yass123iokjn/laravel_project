@@ -23,13 +23,18 @@ class AuthenticatedSessionController extends Controller
      */
     public function store(LoginRequest $request): RedirectResponse
     {
-        $request->authenticate();
-
+        // Si l'authentification échoue, renvoyer l'utilisateur avec un message d'erreur
+        if (!Auth::attempt($request->only('email', 'password'))) {
+            return redirect()->back()->with('error', 'Utilisateur inexistant');
+        }
+    
+        // Si l'authentification réussit, on régénère la session
         $request->session()->regenerate();
-
-        // Redirige vers l'index des formules
+    
+        // Redirection vers la page des formules après la connexion
         return redirect()->intended(route('formulas.index'));
     }
+    
 
     /**
      * Destroy an authenticated session.

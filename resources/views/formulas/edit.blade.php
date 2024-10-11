@@ -3,7 +3,7 @@
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <h2 class="font-extrabold text-6xl text-gray-800 leading-tight text-right italic mb-8">
-                
+                    <!-- Titre de la page (si nécessaire) -->
                 </h2>
 
                 <!-- Messages de succès ou d'erreur -->
@@ -24,7 +24,7 @@
                 @endif
 
                 @if ($errors->any())
-                <div class="bg-red-100 border-t-4 border-red-500 text-red-900 px-4 py-3 shadow-md rounded relative mb-4" role="alert">
+                <div class="bg-white border-t-4 border-red-500 text-red-900 px-6 py-4 shadow-md rounded relative mb-4" role="alert">
                     <div class="flex">
                         <div class="py-1">
                             <svg class="fill-current h-6 w-6 text-red-500 mr-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
@@ -32,8 +32,8 @@
                             </svg>
                         </div>
                         <div>
-                            <p class="font-bold">Erreur!</p>
-                            <ul class="text-sm">
+                            <p class="font-bold text-lg">Erreur!</p> <!-- Titre de l'alerte en plus grand -->
+                            <ul class="text-md"> <!-- Liste avec une taille de texte augmentée -->
                                 @foreach ($errors->all() as $error)
                                 <li>{{ $error }}</li>
                                 @endforeach
@@ -70,11 +70,11 @@
 
     <!-- Modal de confirmation -->
     <div id="confirmationModal" class="fixed z-50 inset-0 overflow-y-auto hidden flex items-center justify-center">
-        <div class="bg-white rounded-lg shadow-lg max-w-xs w-full">
-            <div class="bg-green-100 border-t-4 border-green-500 text-green-900 px-4 py-3 shadow-md rounded-t relative">
+        <div class="bg-white rounded-lg shadow-lg max-w-md w-full"> <!-- Ajusté la largeur -->
+            <div class="bg-white border-t-4 border-red-500 text-red-900 px-4 py-3 shadow-md rounded-t relative"> <!-- Fond blanc et texte rouge -->
                 <div class="flex">
                     <div class="py-1">
-                        <svg class="fill-current h-6 w-6 text-green-500 mr-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                        <svg class="fill-current h-6 w-6 text-red-500 mr-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                             <path d="M2.93 17.07A10 10 0 1 1 17.07 2.93 10 10 0 0 1 2.93 17.07zm12.73-1.41A8 8 0 1 0 4.34 4.34a8 8 0 0 0 11.32 11.32zM9 11V9h2v6H9v-4zm0-6h2v2H9V5z" />
                         </svg>
                     </div>
@@ -85,7 +85,7 @@
                     </div>
                 </div>
             </div>
-            <div class="bg-green-100 border-t-4 border-green-500 rounded-b text-green-900 px-4 py-3 shadow-md" role="alert">
+            <div class="bg-white border-t-4 border-red-500 rounded-b text-red-900 px-4 py-3 shadow-md" role="alert"> <!-- Fond blanc et texte rouge -->
                 <div class="px-4 py-3 flex justify-end">
                     <button type="button" class="bg-gray-200 text-gray-800 px-4 py-2 rounded ml-2 hover:bg-gray-300" onclick="confirmUpdate()">Oui</button>
                     <button type="button" class="bg-gray-200 text-gray-800 px-4 py-2 rounded ml-2 hover:bg-gray-300" onclick="closeModal()">Non</button>

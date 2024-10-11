@@ -28,9 +28,9 @@
                             <tr>
                                 @if(!empty($headers) && is_array($headers))
                                     @foreach($headers as $header)
-                                        <th class="border px-4 py-2">{{ ucfirst($header) }}</th>
+                                        <th class="border font-bold px-4 py-2">{{ ucfirst($header) }}</th>
                                     @endforeach
-                                    <th class="border px-4 py-2">Résultat</th>
+                                    <th class="border font-bold px-4 py-2">Résultat</th>
                                 @endif
                             </tr>
                         </thead>
@@ -38,7 +38,7 @@
                             @foreach($resultsData as $result)
                                 <tr>
                                     @foreach($result as $operand)
-                                        <td class="border px-4 py-2">{{ is_array($operand) ? implode(', ', $operand) : $operand }}</td>
+                                        <td class="border font-bold px-4 py-2">{{ is_array($operand) ? implode(', ', $operand) : $operand }}</td>
                                     @endforeach
                                 </tr>
                             @endforeach
@@ -66,9 +66,7 @@
             background-size: cover;
             background-position: center;
             height: 100vh;
-            display: flex;
             justify-content: center;
-            align-items: center;
         }
     </style>
 </x-app-layout>

@@ -81,8 +81,8 @@
 
 
                 <div class="mt-8">
-    <h2 class="text-xl font-bold leading-none text-gray-900 dark:text-white">Calculs Effectués</h2>
-    <div class="grid grid-cols-1 gap-4">
+    
+                <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg p-6">
         @if($calculations->count())
             @foreach($calculations as $calculation)
                 <div class="bg-white rounded-lg shadow p-4 flex items-center border justify-between">

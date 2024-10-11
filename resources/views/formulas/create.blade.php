@@ -17,7 +17,7 @@
                         </div>
 
                         <div class="mb-4">
-                            <button id="analyze-btn" type="button" class="w-full flex items-center justify-center px-4 py-2 bg-green-500 border border-transparent rounded-md font-semibold text-xs uppercase tracking-widest hover:bg-green-700 focus:outline-none focus:border-green-700 focus:ring focus:ring-green-200 active:bg-green-600 disabled:opacity-25 transition">
+                            <button id="analyze-btn" type="button" class="w-full flex items-center justify-center px-4 py-2 bg-black-500 border border-transparent rounded-md font-semibold text-xs uppercase tracking-widest hover:bg-grey-700 focus:outline-none focus:border-black-700 focus:ring focus:ring-green-200 active:bg-grey-600 disabled:opacity-25 transition">
                                 {{ __('Analyser et Traduire') }}
                             </button>
                         </div>
@@ -33,7 +33,7 @@
                         </div>
 
                         <div class="mb-4">
-                            <button id="add-formula-btn" type="submit" class="w-full flex items-center justify-center px-4 py-2 bg-blue-500 border border-transparent rounded-md font-semibold text-xs uppercase tracking-widest hover:bg-blue-700 focus:outline-none focus:border-blue-700 focus:ring focus:ring-blue-200 active:bg-blue-600 disabled:opacity-25 transition">
+                            <button id="add-formula-btn" type="submit" class="w-full flex items-center justify-center px-4 py-2 bg-black-500 border border-transparent rounded-md font-semibold text-xs uppercase tracking-widest hover:bg-black-700 focus:outline-none focus:border-black-700 focus:ring focus:ring-blue-200 active:bg-black-600 disabled:opacity-25 transition">
                                 {{ __('Ajouter la Formule') }}
                             </button>
                         </div>

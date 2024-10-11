@@ -8,6 +8,18 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ asset('css/style.css') }}"> <!-- Use your local CSS file -->
     <script src="https://kit.fontawesome.com/a81368914c.js"></script> <!-- Font Awesome for icons -->
+    <script>
+        // Function to show and hide the alert
+        function showAlert() {
+            const alert = document.getElementById('error-alert');
+            if (alert) {
+                alert.classList.remove('hidden');
+                setTimeout(() => {
+                    alert.classList.add('hidden');
+                }, 10); // Change 3000 to the number of milliseconds you want the alert to stay visible
+            }
+        }
+    </script>
 </head>
 
 <body class="overflow-hidden" style="background-color: #eafaf1;">
@@ -19,13 +31,21 @@
             <img src="{{ asset('images/undraw_mobile_login_re_9ntv.svg') }}" alt="Login Illustration" class="w-96 transition-transform duration-700 animate-slide-in">
         </div>
         <div class="login-content bg-white p-6 rounded-lg shadow-md w-full max-w-md">
-            <form method="POST" action="{{ route('login') }}">
+            <form method="POST" action="{{ route('login') }}" onload="showAlert()">
                 @csrf <!-- CSRF Token for security -->
+
+                <!-- Error alert -->
+                @if (session('error'))
+                    <div id="error-alert" class="bg-white text-red-600 border border-red-600 p-4 rounded mb-6">
+                        {{ session('error') }}
+                    </div>
+                @endif
+
                 <img src="{{ asset('images/avatar.svg') }}" alt="Avatar" class="h-24 mx-auto mb-4">
                 <h2 class="title text-2xl font-bold text-center text-gray-700">Welcome</h2>
 
                 <!-- Email Address -->
-                <div class="input-div one mt-6">
+                <div class="input-div one mt-6 focus-within">
                     <div class="i">
                         <i class="fas fa-user"></i>
                     </div>
@@ -36,7 +56,7 @@
                 </div>
 
                 <!-- Password -->
-                <div class="input-div pass mt-4">
+                <div class="input-div pass mt-4 focus-within">
                     <div class="i">
                         <i class="fas fa-lock"></i>
                     </div>
@@ -90,20 +110,6 @@
             height: 50%;
             z-index: -1;
             transform: rotate(180deg);
-        }
-
-        @keyframes wave-animation {
-            0% {
-                transform: translateX(0);
-            }
-
-            50% {
-                transform: translateX(-10px);
-            }
-
-            100% {
-                transform: translateX(0);
-            }
         }
 
         .container {
@@ -206,16 +212,21 @@
         }
 
         .input-div.focus:before,
-        .input-div.focus:after {
+        .input-div.focus:after,
+        .input-div:focus-within:before,
+        .input-div:focus-within:after {
             width: 50%;
         }
 
-        .input-div.focus > div > h5 {
+        .input-div.focus > div > h5,
+        .input-div:focus-within h5 {
             top: -5px;
             font-size: 15px;
+            color: #38d39f;
         }
 
-        .input-div.focus > .i > i {
+        .input-div.focus > .i > i,
+        .input-div:focus-within .i > i {
             color: #38d39f;
         }
 
@@ -279,23 +290,21 @@
         }
 
         .animate-slide-in {
-            animation: slide-in 0.5s ease forwards;
+            animation: slide-in 0.5s ease-out forwards;
         }
 
-        @media (max-width: 768px) {
-            .container {
-                grid-template-columns: 1fr;
-                padding: 0;
+        @keyframes wave-animation {
+            0% {
+                transform: translateX(0);
             }
 
-            .img {
-                justify-content: center;
-                margin-bottom: 2rem;
+            100% {
+                transform: translateX(-20%);
             }
+        }
 
-            .img img {
-                width: 300px;
-            }
+        .animate-wave {
+            animation: wave-animation 10s linear infinite;
         }
     </style>
 </body>
