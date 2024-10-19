@@ -105,6 +105,10 @@
 
         const data = @json($resultsData); // Data extracted from import results
         const headers = {!! json_encode($headers) !!}; // Encode headers as JavaScript array
+        console.log("Data:", data);
+
+
+
 
         // Get the index of the selected operand
         const operandIndex = headers.indexOf(operand);
@@ -118,8 +122,10 @@
         // Update labels to use the selected operand instead of the first column
         const labels = data.map(row => row[operandIndex]); // Use the selected operand values for the x-axis
         const operandData = data.map(row => row[operandIndex]); // Get values for the selected operand
-        const resultData = data.map(row => row[3]); // Assuming "Résultat" is always in the fourth column
-
+        const resultData = data.map(row => row[row.length - 1]); // Récupérer le résultat dans la dernière colonne
+ // Assuming "Résultat" is always in the fourth column
+        console.log("Labels:", labels);
+        console.log("Results Data:", resultData);
         // Generate random pastel colors for the chart
         function getRandomPastelColor() {
             const r = Math.floor(Math.random() * 127 + 127);

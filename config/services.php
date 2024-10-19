@@ -38,5 +38,13 @@ return [
     'openai' => [
         'api_key' => env('OPENAI_API_KEY'),
     ],
+    'textrazor' => [
+        'key' => env('TEXTRAZOR_KEY'),
+    ],
+    'wolfram' => [
+        'alpha' => [
+            'appid' => env('WOLFRAM_ALPHA_APPID'),
+        ],
+    ],
 
 ];

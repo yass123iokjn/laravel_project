@@ -1,24 +1,17 @@
 <?php
-// routes/web.php
-
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\FormulaController;
 use App\Http\Controllers\FileImportController;
 use App\Http\Controllers\CalculController;
 use Illuminate\Support\Facades\Route;
-
-
 use Illuminate\Support\Facades\Auth;
 
-// Redirect to login page when visiting the root URL
+// Redirige vers la page de connexion lorsqu'on visite l'URL racine
 Route::get('/', function () {
-    if (Auth::check()) {
-        return redirect()->route('formulas.index'); // Redirect to formulas index if logged in
-    }
-    return redirect()->route('login'); // Redirect to login if not authenticated
+    return Auth::check() ? redirect()->route('formulas.index') : redirect()->route('login');
 });
 
-// Grouping routes that require authentication
+// Regroupement des routes nécessitant une authentification
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/formulas', [FormulaController::class, 'index'])->name('formulas.index');
     Route::resource('formulas', FormulaController::class);
@@ -33,11 +26,12 @@ Route::get('/formulas/{formula}/import', [FileImportController::class, 'create']
 Route::post('/formulas/{formula}/import', [FileImportController::class, 'store'])->name('formulas.import');
 
 Route::post('/formulas/analyze', [FormulaController::class, 'analyzeAndTranslate'])->name('formulas.analyze');
+
 Route::get('formulas/{id}/results', [FormulaController::class, 'showResults'])->name('formulas.results');
 Route::get('formulas/{id}/graph', [FormulaController::class, 'showGraph'])->name('formulas.graph');
 
 Route::delete('/formulas/import/{id}', [FileImportController::class, 'destroy'])->name('formulas.deleteImport');
 Route::post('/formulas/{id}/generatePdf', [FormulaController::class, 'generatePdf'])->name('pdf.report');
 
-// Require authentication routes
+// Exiger des routes d'authentification
 require __DIR__.'/auth.php';

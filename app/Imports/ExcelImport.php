@@ -13,7 +13,7 @@ class ExcelImport implements ToModel, WithHeadingRow
 {
     protected $reference;
     protected $formulaId;
-    protected $nomCalcul; // Consider using or removing if unnecessary
+    protected $nomCalcul;
     protected $errors = [];
     protected $results = [];
     protected $evaluatedExpressions = [];
@@ -61,40 +61,39 @@ class ExcelImport implements ToModel, WithHeadingRow
     }
 
     protected function applyFormula($expression, $row)
-{
-    // Replace each header in the expression with its corresponding value in the row
-    foreach ($this->headers as $header) {
-        if (array_key_exists($header, $row)) {
-            $value = floatval($row[$header]);
-            // Replace the header with its value in the expression
-            $expression = str_replace($header, $value, $expression);
+    {
+        // Replace each header in the expression with its corresponding value in the row
+        foreach ($this->headers as $header) {
+            if (array_key_exists($header, $row)) {
+                $value = floatval($row[$header]);
+                $expression = str_replace($header, $value, $expression);
+            }
         }
+
+        // Replace mathematical functions with their PHP equivalents
+        $expression = $this->transformMathFunctions($expression);
+
+        Log::info('Expression avant évaluation : ' . $expression);
+        $result = 0;
+
+        try {
+            // Evaluate the expression safely
+            $result = eval('return ' . $expression . ';');
+        } catch (\Throwable $e) {
+            Log::error('Erreur d\'évaluation : ' . $e->getMessage());
+            return ['error' => 'Erreur lors de l\'évaluation de l\'expression.'];
+        }
+
+        return ['result' => $result, 'expression' => $expression];
     }
 
-    // Replace mathematical functions with their PHP equivalents
-    $expression = $this->transformMathFunctions($expression);
-
-    Log::info('Expression avant évaluation : ' . $expression);
-    $result = 0;
-
-    try {
-        // Evaluate the expression
-        $result = eval('return ' . $expression . ';');
-    } catch (\Throwable $e) {
-        Log::error('Erreur d\'évaluation : ' . $e->getMessage());
-        return ['error' => 'Erreur lors de l\'évaluation de l\'expression.'];
-    }
-
-    return ['result' => $result, 'expression' => $expression];
-}
-
-protected function transformMathFunctions($expression)
+    protected function transformMathFunctions($expression)
 {
     // Define replacements for math functions
     $replacements = [
-        '√' => 'sqrt',          // square root
         '|' => 'abs',           // absolute value
-        'log' => 'log',         // logarithm
+        'log(' => 'log10(',     // logarithm with base 10
+        'ln(' => 'log(',        // natural logarithm
         'sin' => 'sin',         // sine
         'cos' => 'cos',         // cosine
         'tan' => 'tan',         // tangent
@@ -102,14 +101,13 @@ protected function transformMathFunctions($expression)
         'exp(' => 'exp('        // exponential function
     ];
 
-    // Replace each math function in the expression
+    // Replace square root with the correct handling
+    $expression = preg_replace('/√(\d+)/', 'sqrt($1)', $expression);
+
+    // Replace other math functions
     foreach ($replacements as $symbol => $phpFunction) {
         $expression = str_replace($symbol, $phpFunction, $expression);
     }
-
-    // Special case for exp(x, n) if necessary
-    // You can customize this part according to your needs
-    $expression = preg_replace('/exp\(([^,]+),\s*([^)]+)\)/', 'exp($1) * exp($2)', $expression);
 
     return $expression;
 }

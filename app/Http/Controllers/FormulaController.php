@@ -18,30 +18,33 @@ use Illuminate\Support\Facades\Log;
 use OpenAI\Laravel\Facades\OpenAI;
 use Exception;
 use Illuminate\Support\Facades\Storage;
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\ClientException;
+use GuzzleHttp\Exception\RequestException;
 
 class FormulaController extends Controller
 {
     use AuthorizesRequests;
 
     public function index(Request $request)
-{
-    $search = $request->input('search');
-    $searchType = $request->input('search_type', 'expression'); 
+    {
+        $search = $request->input('search');
+        $searchType = $request->input('search_type', 'expression');
 
-    $formulas = Formula::query();
+        $formulas = Formula::query();
 
-    if ($search) {
-        if ($searchType == 'name') {
-            $formulas = $formulas->where('name', 'like', '%' . $search . '%');
-        } else {
-            $formulas = $formulas->where('expression', 'like', '%' . $search . '%');
+        if ($search) {
+            if ($searchType == 'name') {
+                $formulas = $formulas->where('name', 'like', '%' . $search . '%');
+            } else {
+                $formulas = $formulas->where('expression', 'like', '%' . $search . '%');
+            }
         }
+
+        $formulas = $formulas->paginate(6);
+
+        return view('formulas.index', compact('formulas'));
     }
-
-    $formulas = $formulas->paginate(6); 
-
-    return view('formulas.index', compact('formulas'));
-}
 
 
 
@@ -105,213 +108,246 @@ class FormulaController extends Controller
     }
 
     public function import(Request $request, $id)
-{
-    $request->validate([
-        'file' => 'required|mimes:xls,xlsx',
-        'reference' => 'required|string',
-        'nom_calcul' => 'required|string|max:255', // Validation pour le nom de calcul
-    ]);
-
-    $formula = Formula::find($id);
-    if (!$formula) {
-        return redirect()->back()->withErrors(['error' => 'Formule non trouvée.']);
-    }
-
-    try {
-        DB::beginTransaction();
-
-        $file = $request->file('file');
-        $filePath = $file->store('excel_files');
-
-        // Importer le fichier Excel sans créer l'enregistrement tout de suite
-        $import = new ExcelImport($request->input('reference'), $id, $request->input('nom_calcul')); // Passer le nom_calcul
-        Excel::import($import, $file);
-
-        // Vérifier les erreurs d'importation
-        if (!empty($import->getErrors())) {
-            DB::rollBack();
-            return redirect()->back()->withErrors(['error' => implode('; ', $import->getErrors())]);
-        }
-
-        // Créer l'enregistrement du fichier Excel seulement si l'importation a réussi
-        $excelFile = ExcelFile::create([
-            'path' => $filePath,
-            'name' => $file->getClientOriginalName(),
+    {
+        $request->validate([
+            'file' => 'required|mimes:xls,xlsx',
+            'reference' => 'required|string',
+            'nom_calcul' => 'required|string|max:255', // Validation pour le nom de calcul
         ]);
 
-        // Enregistrez les résultats avec l'ID du fichier Excel
-        $import->saveResults($excelFile->id);
+        $formula = Formula::find($id);
+        if (!$formula) {
+            return redirect()->back()->withErrors(['error' => 'Formule non trouvée.']);
+        }
 
-        DB::commit();
+        try {
+            DB::beginTransaction();
 
-    } catch (\Throwable $e) {
-        DB::rollBack();
-        return redirect()->back()->withErrors(['error' => 'Erreur lors de l\'importation du fichier Excel.']);
+            $file = $request->file('file');
+            $filePath = $file->store('excel_files');
+
+            // Importer le fichier Excel sans créer l'enregistrement tout de suite
+            $import = new ExcelImport($request->input('reference'), $id, $request->input('nom_calcul')); // Passer le nom_calcul
+            Excel::import($import, $file);
+
+            // Vérifier les erreurs d'importation
+            if (!empty($import->getErrors())) {
+                DB::rollBack();
+                return redirect()->back()->withErrors(['error' => implode('; ', $import->getErrors())]);
+            }
+
+            // Créer l'enregistrement du fichier Excel seulement si l'importation a réussi
+            $excelFile = ExcelFile::create([
+                'path' => $filePath,
+                'name' => $file->getClientOriginalName(),
+            ]);
+
+            // Enregistrez les résultats avec l'ID du fichier Excel
+            $import->saveResults($excelFile->id);
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return redirect()->back()->withErrors(['error' => 'Erreur lors de l\'importation du fichier Excel.']);
+        }
+
+        return redirect()->back()->with('success', 'Fichier importé et calculé avec succès.');
     }
-
-    return redirect()->back()->with('success', 'Fichier importé et calculé avec succès.');
-}
-
 
     public function analyzeAndTranslate(Request $request)
-{
-    $sentence = $request->input('sentence');
-
-    // Vérifier si la phrase est présente
-    if (!$sentence) {
-        Log::error('Analyse échouée : phrase manquante.', ['request' => $request->all()]);
-        return response()->json(['error' => 'Phrase manquante.'], 400);
-    }
-
-    try {
-        Log::info('Début de l\'analyse pour la phrase : ' . $sentence);
-        
-        // Appel à OpenAI pour générer la formule à partir de la phrase
-        $response = OpenAI::completions()->create([
-            'model' => 'text-davinci-003',
-            'prompt' => 'Traduire cette description en une formule mathématique: ' . $sentence,
-            'max_tokens' => 60,
-            'temperature' => 0.7,
+    {
+        $sentence = $request->input('sentence');
+        $request->validate([
+            'sentence' => 'required|string',
         ]);
 
-        // Vérifier si le résultat contient des choix
-        if (!isset($response['choices']) || empty($response['choices'])) {
-            Log::error('Aucune réponse de l\'API OpenAI.', ['response' => $response]);
-            return response()->json(['error' => 'Erreur lors de la génération de la formule.'], 500);
+        // Validation de l'entrée
+        if (empty($sentence)) {
+            return response()->json(['error' => 'La phrase ne peut pas être vide.'], 400);
         }
 
-        // Extraire la formule du résultat
-        $formula = trim($response['choices'][0]['text']);
+        $appId = config('services.wolfram.alpha.appid');
+        if (empty($appId)) {
+            return response()->json(['error' => 'Clé API Wolfram Alpha non configurée.'], 400);
+        }
 
-        Log::info('Analyse réussie : formule générée', ['formula' => $formula]);
+        $url = "https://api.wolframalpha.com/v2/query?input=" . urlencode($sentence) . "&format=plaintext&output=JSON&appid=" . $appId;
 
-        return response()->json(['formula' => $formula]);
+        try {
+            $response = file_get_contents($url);
+            Log::info('Response from Wolfram Alpha: ', ['response' => $response]); // Log de la réponse brute
+            $data = json_decode($response, true);
+            Log::info('Decoded response from Wolfram Alpha: ', $data);
 
-    } catch (\Exception $e) {
-        Log::error('Erreur lors de la génération de la formule : ' . $e->getMessage(), ['exception' => $e]);
-        return response()->json(['error' => 'Erreur lors de la génération de la formule.'], 500);
-    }}
-
-    public function confirmDelete($id)
-    {
-        $formula = Formula::findOrFail($id);
-        return view('formulas.confirm_delete', compact('formula'));
-    }
-
-    public function showResults($id)
-{
-    $calculation = Calcul::with('results')->findOrFail($id);
-
-    $resultsData = [];
-    $headers = [];
-
-    foreach ($calculation->results as $result) {
-        // Supposons que result_data est toujours un tableau
-        $resultData = $result->result_data;
-
-        if (is_array($resultData)) {
-            // Vérifiez si les en-têtes sont présents
-            if (isset($resultData['headers'])) {
-                $headers = $resultData['headers']; // Stocker les en-têtes
+            if (!isset($data['queryresult'])) {
+                return response()->json(['error' => 'Aucune réponse valide reçue.'], 400);
             }
 
-            // Ajoutez les résultats
-            if (isset($resultData['results'])) {
-                foreach ($resultData['results'] as $item) {
-                    if (is_array($item)) {
-                        $resultsData[] = $item; // Ajouter les résultats
+            if ($data['queryresult']['success']) {
+                // Vérifiez si le pod de résultat contient des données
+                if (isset($data['queryresult']['pods']) && count($data['queryresult']['pods']) > 0) {
+                    foreach ($data['queryresult']['pods'] as $pod) {
+                        if (isset($pod['subpods'][0]['plaintext'])) {
+                            $formula = $pod['subpods'][0]['plaintext'];
+                            // Simplify the formula
+                            $simplifiedFormula = $this->simplifyFormula($formula);
+                            return response()->json(['formula' => $simplifiedFormula]);
+                        }
                     }
                 }
+                return response()->json(['error' => 'Aucune formule trouvée.'], 400);
+            } else {
+                return response()->json(['error' => 'Aucune formule trouvée.'], 400);
             }
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de l\'analyse avec Wolfram Alpha : ' . $e->getMessage());
+            return response()->json(['error' => 'Erreur lors de l\'analyse.'], 500);
         }
     }
 
-    return view('formulas.results', compact('resultsData', 'id', 'headers'));
-}
+    // Function to simplify the formula
+    private function simplifyFormula($formula)
+    {
+        $replacements = [
+            'sum()' => '+',
+            'sqrt' => '√',
+            'abs' => '|',
+            'log10(' => 'log(',
+            'log(' => 'ln(',
+            'sin' => 'sin',
+            'cos' => 'cos',
+            'tan' => 'tan',
+            '^' => '**',
+            'exp(' => 'exp(',
+        ];
 
-
-
-
-public function showGraph($id)
-{
-    $calculation = Calcul::find($id);
-
-    if (!$calculation) {
-        abort(404); // Renvoie une erreur 404 si le calcul n'existe pas
+        // Perform the replacements
+        return str_replace(array_keys($replacements), array_values($replacements), $formula);
     }
 
-    // Récupérer la formule associée
-    $formula = $calculation->formula; 
-    // Récupérer les résultats et en-têtes pour le calcul donné
-    $calculation = Calcul::with('results')->findOrFail($id);
-    $resultsData = [];
-    $headers = [];
 
-    foreach ($calculation->results as $result) {
-        $resultData = $result->result_data;
 
-        if (is_array($resultData)) {
-            if (isset($resultData['headers'])) {
-                $headers = $resultData['headers']; // En-têtes des colonnes
-            }
 
-            if (isset($resultData['results'])) {
-                $resultsData = $resultData['results']; // Résultats des calculs
-            }
-        }
-    }
 
-    return view('formulas.graph', compact( 'formula','headers', 'resultsData'));
-    
-}
 
-public function generatePdf(Request $request, $id)
-{
-    $formula = Formula::findOrFail($id);
-    $calcul = Calcul::where('formula_id', $id)->latest()->first();
-    
-    if (!$calcul) {
-        return redirect()->back()->withErrors(['error' => 'Aucun calcul trouvé pour cette formule.']);
-    }
 
-    // Récupérer le fichier Excel et les résultats associés
-    $excelFile = ExcelFile::find($calcul->excel_file_id);
-    $results = Result::where('formula_id', $id)->get();
+    public function showResults($id)
+    {
+        $calculation = Calcul::with('results')->findOrFail($id);
 
-    // Préparer les données pour $resultsData et $headers
-    $resultsData = [];
-    $headers = [];
+        $resultsData = [];
+        $headers = [];
 
-    if ($results->isNotEmpty()) {
-        foreach ($results as $result) {
+        foreach ($calculation->results as $result) {
+            // Supposons que result_data est toujours un tableau
             $resultData = $result->result_data;
 
             if (is_array($resultData)) {
+                // Vérifiez si les en-têtes sont présents
                 if (isset($resultData['headers'])) {
-                    $headers = $resultData['headers'];
+                    $headers = $resultData['headers']; // Stocker les en-têtes
                 }
+
+                // Ajoutez les résultats
                 if (isset($resultData['results'])) {
                     foreach ($resultData['results'] as $item) {
-                        if (is_array($item) && !in_array($item, $resultsData)) {
-                            $resultsData[] = $item;
+                        if (is_array($item)) {
+                            $resultsData[] = $item; // Ajouter les résultats
                         }
                     }
                 }
             }
         }
+
+        return view('formulas.results', compact('resultsData', 'id', 'headers'));
     }
 
-    // Récupérer l'image du graphique (base64) depuis la requête
-    $chartImage = $request->input('chartImage'); // L'image est en format Base64
-
-    // Générer le PDF en incluant l'image du graphique
-    $pdf =Pdf::loadView('pdf.report', compact('formula', 'excelFile', 'resultsData', 'headers', 'chartImage'));
-    
-    return $pdf->download('rapport.pdf');
-}
 
 
 
+    public function showGraph($id)
+    {
+        $calculation = Calcul::with('results')->findOrFail($id);
+        $formula = $calculation->formula;
+        $resultsData = [];
+        $headers = [];
+
+        foreach ($calculation->results as $result) {
+            $resultData = $result->result_data;
+
+            // Vérifiez que $resultData est un tableau et contient les clés attendues
+            if (is_array($resultData)) {
+                if (isset($resultData['headers'])) {
+                    $headers = $resultData['headers']; // En-têtes des colonnes
+                }
+
+                if (isset($resultData['results'])) {
+                    foreach ($resultData['results'] as $item) {
+                        // Ajoutez une vérification ici
+                        if (is_array($item) && !empty($item)) {
+                            $resultsData[] = $item; // Ajouter les résultats
+                        } else {
+                            Log::info('Item is not an array or is empty', ['item' => $item]);
+                        }
+                    }
+                } else {
+                    Log::info('No results found in result_data', ['resultData' => $resultData]);
+                }
+            } else {
+                Log::info('result_data is not an array', ['resultData' => $resultData]);
+            }
+        }
+
+        // Vérifiez le contenu de $resultsData
+        Log::info('Results Data:', ['resultsData' => $resultsData]);
+
+        return view('formulas.graph', compact('formula', 'headers', 'resultsData'));
+    }
 
 
+
+    public function generatePdf(Request $request, $id)
+    {
+        $formula = Formula::findOrFail($id);
+        $calcul = Calcul::where('formula_id', $id)->latest()->first();
+
+        if (!$calcul) {
+            return redirect()->back()->withErrors(['error' => 'Aucun calcul trouvé pour cette formule.']);
+        }
+
+        // Récupérer le fichier Excel et les résultats associés
+        $excelFile = ExcelFile::find($calcul->excel_file_id);
+        $results = Result::where('formula_id', $id)->get();
+
+        // Préparer les données pour $resultsData et $headers
+        $resultsData = [];
+        $headers = [];
+
+        if ($results->isNotEmpty()) {
+            foreach ($results as $result) {
+                $resultData = $result->result_data;
+
+                if (is_array($resultData)) {
+                    if (isset($resultData['headers'])) {
+                        $headers = $resultData['headers'];
+                    }
+                    if (isset($resultData['results'])) {
+                        foreach ($resultData['results'] as $item) {
+                            if (is_array($item) && !in_array($item, $resultsData)) {
+                                $resultsData[] = $item;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Récupérer l'image du graphique (base64) depuis la requête
+        $chartImage = $request->input('chartImage'); // L'image est en format Base64
+
+        // Générer le PDF en incluant l'image du graphique
+        $pdf = Pdf::loadView('pdf.report', compact('formula', 'excelFile', 'resultsData', 'headers', 'chartImage'));
+
+        return $pdf->download('rapport.pdf');
+    }
 }

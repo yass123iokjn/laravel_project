@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-app-layout>  
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
             {{ __('Créer une nouvelle formule') }}
@@ -17,7 +17,7 @@
                         </div>
 
                         <div class="mb-4">
-                            <button id="analyze-btn" type="button" class="w-full flex items-center justify-center px-4 py-2 bg-black-500 border border-transparent rounded-md font-semibold text-xs uppercase tracking-widest hover:bg-grey-700 focus:outline-none focus:border-black-700 focus:ring focus:ring-green-200 active:bg-grey-600 disabled:opacity-25 transition">
+                            <button id="analyze-btn" type="button" class="w-full flex items-center justify-center px-4 py-2 bg-black-500 border border-transparent rounded-md font-semibold text-xs uppercase tracking-widest hover:bg-gray-700 focus:outline-none focus:border-black-700 focus:ring focus:ring-green-200 active:bg-gray-600 disabled:opacity-25 transition">
                                 {{ __('Analyser et Traduire') }}
                             </button>
                         </div>
@@ -65,39 +65,50 @@
         }
     </style>
 
-    <script>
-        document.getElementById('analyze-btn').addEventListener('click', function() {
-    const sentence = document.getElementById('sentence').value;
+<script>
+    document.getElementById('analyze-btn').addEventListener('click', function() {
+        const description = document.getElementById('sentence').value;
 
-    // Envoyer la phrase à l'API via une requête POST
-    fetch("{{ route('formulas.analyze') }}", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-TOKEN": "{{ csrf_token() }}"
-        },
-        body: JSON.stringify({ sentence: sentence })
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`Erreur du serveur: ${response.status}`);
+        // Vérifier que la description n'est pas vide
+        if (!description) {
+            alert('Veuillez entrer une description.');
+            return;
         }
-        return response.json();
-    })
-    .then(data => {
-        if (data.error) {
-            console.error('Erreur:', data.error);
-            alert(`Erreur: ${data.error}`);
-        } else {
-            // Mettre à jour le champ "Expression de la Formule" avec la formule générée
-            document.getElementById('expression').value = data.formula;
-        }
-    })
-    .catch(error => {
-        console.error('Erreur:', error);
-        alert(`Erreur: ${error.message}`);
+
+        // Récupérer le jeton CSRF
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+        // Appeler l'API pour analyser la description
+        fetch("http://127.0.0.1:8000/formulas/analyze", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": csrfToken 
+            },
+            body: JSON.stringify({ sentence: description }),
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erreur de la requête : ' + response.statusText);
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Vérifier si la réponse contient une formule
+            if (data.formula) {
+                document.getElementById('expression').value = data.formula; // Mettre à jour le champ d'expression
+            } else {
+                alert('Aucune formule trouvée.');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors de l\'analyse : ' + error.message);
+        });
     });
-});
+</script>
 
-    </script>
+
+<!-- Ajoutez cette balise pour le jeton CSRF -->
+<meta name="csrf-token" content="{{ csrf_token() }}">
 </x-app-layout>
